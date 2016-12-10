@@ -1,0 +1,32 @@
+
+py-linux-traffic-control changes
+---------------------------------
+
+
+v. 0.1.4 (YD, 2016-12-09)
+--------------------------
+
+This is the first version considered for real usage.
+
+What's new:
+
+* the "clear" option now works even if no --dcalss or --sclass given;
+
+* both udp and tcp protocols are supported, thus the new spec token looks like this::
+  PROTOCOL:RANGE:RATE:JITTER
+
+  For example::
+  tcp:8000-8080:512kbit:5%
+
+  As before, RATE or JITTER may be missing, but at least one of the two must be there.
+
+* Initial version of config file profiles support is implemented.
+  We first used the standard .ini parser but it does not support multiple options
+  with the same name (e.g. repeated dclass or sclass) so we wrote our own, which
+  took time, as I explained yesterday.
+
+
+The command line now allows EITHER using a profile from a config file, OR giving the
+arguments to the parser. The first is triggered by a sub-command 'profile', the
+second with sub-comand 'tc'. This all may change if we come up with better names and/or
+better schemes.
