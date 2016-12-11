@@ -27,7 +27,7 @@ Getting the app version::
 
  # ./pyltc.py -V  # note the capital 'V', lowercase means 'verbose'
 
-Clearing the defuault lo interface::
+Clearing the default lo interface::
 
  # ./pyltc.py tc -c
 
