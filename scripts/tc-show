@@ -1,0 +1,29 @@
+#! /bin/sh
+#
+# Honors DEV env variable as the device in case a device
+# is not provided as a first (and only) argument. Uses
+# lo as default if DEV is also unset.
+
+
+tc_bin=/sbin/tc
+
+dev=${1:-${DEV:-eth0}}
+
+
+die() {
+  rc=$?
+  msg=$1
+  echo "!! $msg (rc=$rc)"
+  exit $?
+}
+
+echo "\n--- tc qdiscs for $dev ---"
+$tc_bin -s -d -p qdisc show dev $dev || die "Failed to show qdiscs"
+
+echo "\n--- tc classes for $dev ---"
+$tc_bin -s -d -p class show dev $dev || die "Failed to show classes"
+
+echo "\n--- tc filters for $dev ---"
+$tc_bin -s -d -p filter show dev $dev || die "Failed to show filters"
+
+echo ''
