@@ -18,10 +18,12 @@ import io
 from abc import abstractmethod, ABC
 import subprocess
 from subprocess import PIPE, TimeoutExpired
+import argparse
+from unittest.mock import MagicMock
 
 
-__version__ = (0, 1, 4)
-__build__ = 29
+__version__ = (0, 1, 5)
+__build__ = 33
 __maintainer__ = "Yassen Damyanov <yd-at-itlabs.bg>"
 
 #: netem (the qdisc that simulates special network conditions) works for a
@@ -295,6 +297,15 @@ class Interface(object):
         self._egress_chain = target_factory(self, DIR_EGRESS)
         self._ingress_chain = target_factory(self, DIR_INGRESS)
 
+    @classmethod
+    def new_instance(cls, name, target_factory=default_target_factory):
+        """
+        TODO: document
+        """
+        if name is None:
+            return MagicMock()
+        return cls(name, target_factory)
+
     @property
     def name(self):
         """Returns the name of this interface."""
@@ -435,8 +446,9 @@ class TcFileTarget(ITarget):
         self._filename = "{}-{}.tc".format(iface.name, direction)
         self._commands = list()
 
-    def clear(self):
-        cmd = "tc qdisc del dev {} root".format(self._iface.name)
+    def clear(self, is_ingress=False):
+        root_name = 'ingress' if is_ingress else 'root'
+        cmd = "tc qdisc del dev {} {}".format(self._iface.name, root_name)
         self._commands.append(cmd)
 
     def configure(self, filename):
@@ -605,7 +617,7 @@ def shape_ports(target, direction, range, rate, loss=None):
     target.add_filter('basic', rootqd, cond=cond, flownode=htbclass)
 
 
-def threefold(target, range, rate, loss=None):
+def threefold(target, range, rate, loss=None):  # TODO: Unused?
     """HTB-based hirarchical system."""
     rootqd = target.set_root_qdisc('htb', default=1)
     default_class = target.add_class('htb', parent=rootqd)
@@ -619,10 +631,10 @@ def threefold(target, range, rate, loss=None):
     target.add_filter('basic', rootqd, cond=cond, flownode=shaped_class)
 
 
-def shape_dports(chain, range, rate, loss=None):
+def shape_dports(chain, range, rate, loss=None):  # TODO: Unused?
     return chain.shape_ports('dport', range, rate, loss)
 
-def shape_sports(chain, range, rate, loss=None):
+def shape_sports(chain, range, rate, loss=None):  # TODO: Unused?
     return chain.shape_ports('sport', range, rate, loss)
 
 
@@ -638,6 +650,12 @@ def build_basics(target):
     udp_qdisc = target.add_qdisc('htb', udp_class)
 
     return tcp_qdisc, udp_qdisc
+
+def build_range_filters(target, parent, flownode, port_range):
+    start, end = map(int, port_range.split('-'))
+    for port in range(start, end + 1):
+        target.add_filter('u32', parent, 'ip dport {} 0xffff'.format(port), flownode)
+#tc filter add dev ifb0 protocol ip parent 2:0 prio 1 u32 match ip dport 5001 0xffff flowid 2:1
 
 def parse_branch_list(args_list):
     branches = list()
@@ -657,7 +675,7 @@ def parse_branch_list(args_list):
                 current['protocol'] = 'tcp'
     return branches
 
-def build_tree(target, tcphook, udphook, args_list, offset):
+def build_tree(target, tcphook, udphook, args_list, offset, is_ingress=False):
     branches = parse_branch_list(args_list)
     for branch in branches:
         if branch['protocol'] == 'tcp':
@@ -674,9 +692,12 @@ def build_tree(target, tcphook, udphook, args_list, offset):
         rate = branch['rate'] if branch['rate'] else '30gbit'
         htb_class = target.add_class('htb', hook, rate=rate)
         # filter(basic) - port
-        start, end = (int(elm) for elm in branch['range'].split("-"))
-        cond_port = '"cmp(u16 at {} layer transport gt {}) and cmp(u16 at {} layer transport lt {})"'.format(offset, start - 1, offset, end + 1)
-        basic_filter = target.add_filter('basic', hook, cond=cond_port, flownode=htb_class)
+        if is_ingress:
+            build_range_filters(target, hook, htb_class, branch['range'])
+        else:
+            start, end = (int(elm) for elm in branch['range'].split("-"))
+            cond_port = '"cmp(u16 at {} layer transport gt {}) and cmp(u16 at {} layer transport lt {})"'.format(offset, start - 1, offset, end + 1)
+            basic_filter = target.add_filter('basic', hook, cond=cond_port, flownode=htb_class)
         # qdisc(netem) - loss
         if branch['loss']:
             netem_qdisc = target.add_qdisc('netem', parent=htb_class, loss=branch['loss'], limit=NETEM_LIMIT)
@@ -727,7 +748,6 @@ def parse_ini_file(profile, conf_file, verbose):
 #     return new_args
 
 def parse_args(argv):
-    import argparse
     parser = argparse.ArgumentParser(epilog="Use '%(prog)s subcommand -h/--help' to see the specific options.")
     if not argv:
         parser.error('Insufficient arguments. Try -h/--help.')
@@ -750,11 +770,16 @@ def parse_args(argv):
 
     parser_cmd = subparsers.add_parser("tc", help="traffc control setup to be applied")
     parser_cmd.add_argument("-v", "--verbose", action='store_true', required=False, default=False,
-                        help="more verbose output (default: %(default)s)")
+                            help="more verbose output (default: %(default)s)")
     parser_cmd.add_argument("-i", "--iface", required=False, default='lo',
-                        help="the network device name (default: %(default)s)")
+                            help="the network device name (default: %(default)s)")
     parser_cmd.add_argument("-c", "--clear", action='store_true', required=False, default=False,
-                        help="generate a chain clearing clause before the actual recipe (default: %(default)s)")
+                            help="generate a chain clearing clause before the actual recipe"
+                                 " (default: %(default)s)")
+    parser_cmd.add_argument("-in", "--ingress", required=False, default=None,
+                            help="defined ingress control, specifying which ifb device to use;"
+                                 " 'setup' means setting up a new ifb device"
+                                 " (default: %(default)s)")
     parser_cmd.add_argument("-dc", "--dclass", default=None, action='append',
                             metavar='PROTOCOL:RANGE:RATE:JITTER',
                             help="Define a discipline class for dest port range. Example:"
@@ -770,26 +795,67 @@ def parse_args(argv):
     args = parser.parse_args(argv)
     if not args.subparser:
         parser.error('No action requested.')
+
+    args.ingress = handle_ingress_arg(args.ingress, parser)
+
     if args.subparser == 'tc' and not (args.sclass or args.dclass or args.clear):
         parser.error('No action requested: add at least one of --sclass, --dclass, --clear.')
     return args
 
-def compose_version():
-    name = sys.argv[0].split(os.sep)[-1]  # TODO: make this a constant
-    version_str = ".".join(map(str, __version__))
-    maintainer = __maintainer__.replace("-at-", "@")
-    return "{} verison {} (maintaner: {})".format(name, version_str, maintainer)
+def handle_ingress_arg(ingress_arg, parser):
+    if not ingress_arg:
+        return None
+    available_ifs = os.listdir('/sys/class/net/')
+    available_ibfs = sorted((iface for iface in available_ifs if iface.startswith('ifb')))
+    if ingress_arg in available_ibfs:
+        return ingress_arg  # using an existing and preconfigured ifb device
+    if ingress_arg != 'setup':
+        parser.error("ifb device not found: {!r}. Use 'setup' to set up a new one.".format(ingress_arg))
+    # we need to set up a new device
+    if not available_ibfs:
+        CommandLine('modprobe --remove ifb').execute()
+        CommandLine('modprobe ifb numifbs=1').execute()
+        CommandLine('ip link set dev ifb0 up').execute()
+        available_ifs = os.listdir('/sys/class/net/')
+        available_ibfs = sorted((iface for iface in available_ifs if iface.startswith('ifb')))
+        assert len(available_ibfs) == 1, "expected available_ibfs to have single element, got {!r}" \
+                                          .format(available_ibfs)
+        return available_ibfs[0]
 
-def main(argv):
+    ifbnum = [int(el.lstrip('ifb')) for el in available_ibfs][-1] + 1
+    ifbdev = "ifb{}".format(ifbnum)
+    CommandLine('ip link add {} type ifb'.format(ifbdev)).execute()
+    CommandLine('ip link set dev {} up'.format(ifbdev)).execute()
+    return ifbdev
+
+
+def handle_version_arg(argv):
+
+    def compose_version():
+        name = sys.argv[0].split(os.sep)[-1]  # TODO: make this a constant
+        version_str = ".".join(map(str, __version__))
+        #maintainer = __maintainer__.replace("-at-", "@")
+        return "{} verison {} (build {})".format(name, version_str, __build__)
+
     if '-V' in argv or '--version' in argv:
         print(compose_version())
         sys.exit(0)
-    args = parse_args(argv)
+#     args = parse_args(argv)
     #print(args)
-    if args.subparser == 'version':
-        name = sys.argv[0].split(os.sep)[-1]  # TODO: make this a constant
-        print(name, "verison", ".".join(map(str, __version__)))
-        sys.exit(0)
+#     if args.subparser == 'version':
+#         name = sys.argv[0].split(os.sep)[-1]  # TODO: make this a constant
+#         print(name, "verison", ".".join(map(str, __version__)))
+#         sys.exit(0)
+
+def main(argv):
+    handle_version_arg(argv)
+    args = parse_args(argv)
+    print(args)
+    #if args.subparser == 'version':
+    #    name = sys.argv[0].split(os.sep)[-1]  # TODO: make this a constant
+    #    print(name, "verison", ".".join(map(str, __version__)))
+    #    sys.exit(0)
+
     if 'profile_name' in args:
         profile_args = parse_ini_file(args.profile_name, args.config, args.verbose)
         #print(profile_args)
@@ -797,15 +863,28 @@ def main(argv):
 
     TrafficControl.init()
     iface = TrafficControl.get_iface(args.iface)
+    # new_instance() will return an empty and dumb object if args.ingress is None
+    ifbdev = Interface.new_instance(args.ingress)
+
+    chain = ifbdev.egress if args.ingress else iface.egress
     if args.clear:
-        iface.egress.clear()
+        if args.ingress:
+            iface.ingress.clear(is_ingress=True)
+        chain.clear()
     if args.dclass or args.sclass:
-        tcp_hook, udp_hook = build_basics(iface.egress)
+        if args.ingress:
+            cmd = 'tc qdisc add dev {} handle ffff: ingress'.format(iface.name)
+            chain._commands.append(cmd)
+            cmd = ("tc filter add dev {} parent ffff: protocol ip"
+                   + " u32 match u32 0 0 action mirred egress redirect dev {}").format(iface.name, ifbdev.name)
+            chain._commands.append(cmd)
+        tcp_hook, udp_hook = build_basics(chain)
     if args.dclass:
-        build_tree(iface.egress, tcp_hook, udp_hook, args.dclass, offset=2)
+        build_tree(chain, tcp_hook, udp_hook, args.dclass, offset=2, is_ingress=bool(args.ingress))
     if args.sclass:
-        build_tree(iface.egress, tcp_hook, udp_hook, args.sclass, offset=0)
-    iface.egress.install(verbose=args.verbose)
+        build_tree(chain, tcp_hook, udp_hook, args.sclass, offset=0, is_ingress=bool(args.ingress))
+    iface.ingress.install(verbose=args.verbose)
+    chain.install(verbose=args.verbose)
 
 
 # ---- Test Section ---------------------------------------------------------
@@ -1079,6 +1158,19 @@ class TestInterface(unittest.TestCase):
         iface = Interface('veth21')
         self.assertEqual('veth21', iface.name)
 
+    def test_sentinel(self):
+        iface = Interface.new_instance(None)
+        iface.ingress.clear()
+        iface.egress.clear()
+        iface.ingress.set_root_qdisc('foo')
+        iface.egress.set_root_qdisc('foo')
+        iface.ingress.add_class('bar', parent=None)
+        iface.egress.add_class('bar', parent=None)
+        iface.ingress.add_filter('hi')
+        iface.egress.add_filter('lo')
+        iface.ingress.install()
+        iface.egress.install()
+
     def test_ingress(self):
         iface = Interface('veth22')
         self.assertIsInstance(iface.ingress, ITarget)
@@ -1177,6 +1269,27 @@ class TestConfigParser(unittest.TestCase):
         #print() # -> a list with all argumets; multiple choises are in a list
         expected = ['--iface', 'lo', '--clear', 'dclass', 'dclass tcp:8000-8080:512mbit:2%', 'dclass', 'udp:22000-24999:768kbit:2%']
         self.assertEqual(expected, config.section('sym-3g'))
+
+class TestHandleIngressArg(unittest.TestCase):
+
+    def test_create_new_ifb(self):
+        cmd = CommandLine('modprobe --remove ifb').execute()
+        cmd = CommandLine('modprobe ifb numifbs=1').execute()
+        parser = argparse.ArgumentParser()
+        result = handle_ingress_arg('setup', parser)
+        self.assertEqual('ifb1', result)
+        cmd = CommandLine('ip link set dev ifb0 down').execute()
+        cmd = CommandLine('modprobe --remove ifb').execute()
+
+    def test_use_existing_ifb(self):
+        cmd = CommandLine('modprobe --remove ifb').execute()
+        cmd = CommandLine('modprobe ifb numifbs=1').execute()
+        cmd = CommandLine('ip link set dev ifb0 up').execute()
+        parser = argparse.ArgumentParser()
+        result = handle_ingress_arg('ifb0', parser)
+        self.assertEqual('ifb0', result)
+        cmd = CommandLine('ip link set dev ifb0 down').execute()
+        cmd = CommandLine('modprobe --remove ifb').execute()
 
 
 if __name__ == '__main__':

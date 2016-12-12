@@ -1,6 +1,12 @@
 
 py-linux-traffic-control changes
----------------------------------
+=================================
+
+
+v. 0.1.5 (2016-12-12)
+--------------------------
+
+Q & D, proof-of-concept support for ingress traffic control.
 
 
 v. 0.1.4 (YD, 2016-12-09)

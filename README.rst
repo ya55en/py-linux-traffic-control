@@ -1,5 +1,5 @@
 PyLTC
--------
+======
 
 Python-based Linux Traffic Control setup utility.
 
@@ -52,6 +52,25 @@ for now (currently being set to ('./pyltc.conf', '/etc/pyltc.conf').
 Setting up some disciplines as defined in 3g-sym profile of the given config file::
 
  # ./pyltc.py profile 3g-sym -c /path/to/config.conf
+
+
+Ingress Traffic Control
+-------------------
+
+(NEW!) Sample command for setting up ingress traffic control::
+
+ # ./pyltc.py tc -cvi eth0 --ingress setup -dc tcp:5000-5002:512kbit -dc udp:4000-4002:256kbi
+
+Use 'setup' as an argument to --ingress the first time. For subsequent calls, use 'ifb0'::
+
+ # ./pyltc.py tc -cvi eth0 --ingress ifb0 -dc tcp:8080-8088:256kbit:7%
+ 
+This is because ifb0 has been created for you the first time, and if you still keep using 'setup',
+another ifb device will be created --  ifb1, then ifb2, etc. etc. Giving ifb0 to --ingress causes
+the tool to reuse ifb0.
+
+Note that you cannot setup egress and ingress controll at the same time. (We may think on
+supporting this in the future, though.)
 
 
 Example config file content::
