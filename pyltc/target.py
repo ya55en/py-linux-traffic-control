@@ -185,9 +185,9 @@ class TcCommandTarget(TcFileTarget):
     def _install(self, verbose=False):
         for idx, cmd_str in enumerate(self._commands):
             should_ignore_errs = (idx == 0 and " del" in cmd_str)
-            if verbose:
-                print("# {!s}".format(cmd_str))
-            CommandLine(cmd_str, ignore_errors=should_ignore_errs).execute()
+            #if verbose:  # TODO: remove
+            #    print("# {!s}".format(cmd_str))
+            CommandLine(cmd_str, ignore_errors=should_ignore_errs).execute(verbose=verbose)
 
     def install(self, verbose=False):
         try:

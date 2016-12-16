@@ -34,11 +34,13 @@ def pyltc_entry_point(argv=None):
 
     handle_version_arg(argv)
     args = parse_args(argv)
-    print(args)
+    if args.verbose:
+        print("Args:", str(args).lstrip("Namespace"))
 
     if 'profile_name' in args:
         profile_args = parse_ini_file(args.profile_name, args.config, args.verbose)
-        args = parse_args(profile_args)
+        old_args_dict = args.__dict__.copy()
+        args = parse_args(profile_args, old_args_dict)
 
     TrafficControl.init()
     iface = TrafficControl.get_iface(args.iface)

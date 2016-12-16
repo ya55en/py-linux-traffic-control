@@ -12,9 +12,7 @@ Installation
 Check out this repository on your linux machine where you want to do traffic
 control.
 
-Please make sure:
-
-  (a) you have root access while using the tool;
+Please make sure you have root access while using the tool.
 
 
 Examples of command line usage:
@@ -57,11 +55,19 @@ Setting up some disciplines as defined in 3g-sym profile of the given config fil
 Ingress Traffic Control
 -------------------
 
-(NEW!) Sample command for setting up ingress traffic control::
+Sample command for setting up ingress traffic control creating a new ifb device::
 
- # ./ltc.py tc -cvi eth0 --ingress setup -dc tcp:5000-5002:512kbit -dc udp:4000-4002:256kbit
+ # ./ltc.py tc -cvi eth0 --ingress -dc tcp:5000-5002:512kbit -dc udp:4000-4002:256kbit
 
-Use 'setup' as an argument to --ingress the first time. For subsequent calls, use 'ifb0'::
+The tool will create a new ifb device if none is found, or use the device with the highest
+number if at least one is found.
+
+If you want to use a specific ifb device, make sure you first create it with::
+
+ # modprobe ifb numifbs=0
+ # ip link set dev ifbX up  # substitute X with the first not-yet-existing ifb device number
+
+and then give it to ltc.py as a value to the `--ingress` switch::
 
  # ./ltc.py tc -cvi eth0 --ingress ifb0 -dc tcp:8080-8088:256kbit:7%
  
@@ -69,7 +75,7 @@ This is because ifb0 has been created for you the first time, and if you still k
 another ifb device will be created --  ifb1, then ifb2, etc. etc. Giving ifb0 to --ingress causes
 the tool to reuse ifb0.
 
-Note that you cannot setup egress and ingress controll at the same time. (We may think on
+Note that you cannot setup egress and ingress controll within the same command. (We may think on
 supporting this in the future, though.)
 
 

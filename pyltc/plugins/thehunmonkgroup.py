@@ -8,7 +8,7 @@ TODO: introduce plugin functionality and convert this to the first plugin ;)
 
 """
 
-from pyltc.parseargs import MisconfigurationError
+from pyltc.parseargs import IllegalArguments
 from pyltc.target import ITarget
 
 
@@ -114,7 +114,7 @@ def build_tree(target, tcphook, udphook, args_list, offset, is_ingress=False):
         elif branch['protocol'] == 'udp':
             hook = udphook
         else:
-            raise MisconfigurationError("protocol not specified (tcp or udp?)")  # FIXME: revisit this
+            raise IllegalArguments("protocol not specified (tcp or udp?)")  # FIXME: revisit this
             #raise RuntimeError('UNREACHABLE')
 
         # class(htb) - shaping

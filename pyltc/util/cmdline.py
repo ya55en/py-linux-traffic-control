@@ -89,7 +89,7 @@ class CommandLine(object):
         # recursively process the rest of the line
         return left.split() + [mid] + self._construct_cmd_list(right)
 
-    def execute(self, timeout=10):
+    def execute(self, verbose=False, timeout=10):
         """Prepares and executes the command."""
         command_list = self._construct_cmd_list(self._cmdline)
         PopenClass = popen_factory()
@@ -99,6 +99,8 @@ class CommandLine(object):
         self._stderr = stderr.decode('unicode_escape') if stderr else ""
         rc = proc.returncode
         self._returncode = rc
+        if verbose:
+            print(" #", self._cmdline)
         if rc and not self._ignore_errors:
             raise CommandFailed(self)
         return self  # allows one-line creation + execution with assignment
