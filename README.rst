@@ -59,7 +59,7 @@ Ingress Traffic Control
 
 (NEW!) Sample command for setting up ingress traffic control::
 
- # ./pyltc.py tc -cvi eth0 --ingress setup -dc tcp:5000-5002:512kbit -dc udp:4000-4002:256kbi
+ # ./pyltc.py tc -cvi eth0 --ingress setup -dc tcp:5000-5002:512kbit -dc udp:4000-4002:256kbit
 
 Use 'setup' as an argument to --ingress the first time. For subsequent calls, use 'ifb0'::
 
