@@ -177,26 +177,23 @@ class TcFileTarget(ITarget):
 class TcCommandTarget(TcFileTarget):
     """
     An ITarget (see ITarget docstrings) implementation that builds /sbin/tc
-    compatible commands and executes them.
+    compatible commands and finally executes them.
     """
     def __init__(self, iface, direction=DIR_EGRESS):
         super(TcCommandTarget, self).__init__(iface, direction=direction)
+
+    def _install(self, verbose=False):
+        for idx, cmd_str in enumerate(self._commands):
+            should_ignore_errs = (idx == 0 and " del" in cmd_str)
+            if verbose:
+                print("# {!s}".format(cmd_str))
+            CommandLine(cmd_str, ignore_errors=should_ignore_errs).execute()
 
     def install(self, verbose=False):
         try:
             self._install(verbose=verbose)
         except CommandFailed as exc:
             print(exc)
-
-    def _install(self, verbose=False):
-        for idx, cmd_str in enumerate(self._commands):
-            should_ignore_errs = (idx == 0 and " del" in cmd_str)
-            if verbose:
-                print("--> {!r}".format(cmd_str))
-            CommandLine(cmd_str, ignore_errors=should_ignore_errs).execute()
-            #if verbose:
-            #    print("code: {}, out: {}, err: {}".format(cmd.returncode, cmd.stdout, cmd.stderr))
-        #return super(TcCommandTarget, self).install(verbose=True)
 
 
 def default_target_factory(iface, direction):

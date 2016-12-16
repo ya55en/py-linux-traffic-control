@@ -78,10 +78,13 @@ def build_basics(target):
 
 
 def build_range_filters(target, parent, flownode, port_range):
-    start, end = map(int, port_range.split('-'))
-    for port in range(start, end + 1):
-        target.add_filter('u32', parent, 'ip dport {} 0xffff'.format(port), flownode)
-    #tc filter add dev ifb0 protocol ip parent 2:0 prio 1 u32 match ip dport 5001 0xffff flowid 2:1
+    # tc filter add dev ifb0 protocol ip parent 2:0 prio 1 u32 match ip dport 5001 0xffff flowid 2:1
+    if '-' in port_range:
+        start, end = map(int, port_range.split('-'))
+        for port in range(start, end + 1):
+            target.add_filter('u32', parent, 'ip dport {} 0xffff'.format(port), flownode)
+    else:
+        target.add_filter('u32', parent, 'ip dport {} 0xffff'.format(port_range), flownode)
 
 
 def parse_branch_list(args_list):
@@ -89,16 +92,16 @@ def parse_branch_list(args_list):
     for args_str in args_list:
         current = {'protocol': None, 'range': None, 'rate': None, 'loss': None}
         branches.append(current)
-        for part in args_str.split(':'):
-            if '-' in part:
-                current['range'] = part
-            elif part.endswith('bit') or part.endswith('bps'):
-                current['rate'] = part
-            elif part.endswith('%'):
-                current['loss'] = part
-            elif part in ('tcp', 'udp'):
-                current['protocol'] = part
-            else: # unrecognizable protocol or nothing will be treated as tcp
+        for token in args_str.split(':'):
+            if '-' in token or token.isdigit():
+                current['range'] = token
+            elif token.endswith('bit') or token.endswith('bps'):
+                current['rate'] = token
+            elif token.endswith('%'):
+                current['loss'] = token
+            elif token in ('tcp', 'udp'):
+                current['protocol'] = token
+            else: # unrecognizable protocol or nothing will be treated as tcp #FIXME: Is this alright?
                 current['protocol'] = 'tcp'
     return branches
 
@@ -107,25 +110,24 @@ def build_tree(target, tcphook, udphook, args_list, offset, is_ingress=False):
     branches = parse_branch_list(args_list)
     for branch in branches:
         if branch['protocol'] == 'tcp':
-            protocol_number = 6
             hook = tcphook
         elif branch['protocol'] == 'udp':
-            protocol_number = 17
             hook = udphook
         else:
-            raise MisconfigurationError("protocol not specified (tcp or udp?)")
+            raise MisconfigurationError("protocol not specified (tcp or udp?)")  # FIXME: revisit this
             #raise RuntimeError('UNREACHABLE')
 
         # class(htb) - shaping
-        rate = branch['rate'] if branch['rate'] else '30gbit'
+        rate = branch['rate'] if branch['rate'] else '30gbit'  # TODO: move this to a constant
         htb_class = target.add_class('htb', hook, rate=rate)
         # filter(basic) - port
-        if is_ingress:
+        if is_ingress or '-' not in branch['range']:
             build_range_filters(target, hook, htb_class, branch['range'])
         else:
             start, end = (int(elm) for elm in branch['range'].split("-"))
-            cond_port = '"cmp(u16 at {} layer transport gt {}) and cmp(u16 at {} layer transport lt {})"'.format(offset, start - 1, offset, end + 1)
-            basic_filter = target.add_filter('basic', hook, cond=cond_port, flownode=htb_class)
+            cond_port_range = '"cmp(u16 at {} layer transport gt {}) and cmp(u16 at {} layer transport lt {})"' \
+                         .format(offset, start - 1, offset, end + 1)
+            basic_filter = target.add_filter('basic', hook, cond=cond_port_range, flownode=htb_class)
         # qdisc(netem) - loss
         if branch['loss']:
             netem_qdisc = target.add_qdisc('netem', parent=htb_class, loss=branch['loss'], limit=NETEM_LIMIT)

@@ -8,11 +8,8 @@ import sys
 import argparse
 
 from pyltc.conf import CONFIG_PATHS, __version__, __build__
-from pyltc.device import Interface
-from pyltc.facade import TrafficControl
 from pyltc.util.cmdline import CommandLine
 from pyltc.util.confparser import ConfigParser
-from pyltc import plugins
 
 
 class MisconfigurationError(Exception):

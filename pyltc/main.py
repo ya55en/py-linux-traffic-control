@@ -44,6 +44,4 @@ def pyltc_entry_point(argv=None):
     iface = TrafficControl.get_iface(args.iface)
     ifbdev = Interface.new_instance(args.ingress)  # returns a "Null" Interface object if args.ingress is None
 
-    print(args, iface, ifbdev)
-    #return 0
     thehunmonkgroup.plugin_main(args, iface, ifbdev)
