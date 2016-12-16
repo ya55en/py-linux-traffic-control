@@ -83,7 +83,7 @@ Example config file content::
  clear
  iface eth0
  dclass tcp:6000-6999:512kbit
- 
+
  [3g-sym]
  clear
  iface eth0
