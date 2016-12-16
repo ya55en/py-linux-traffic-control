@@ -121,7 +121,7 @@ def parse_args(argv, old_args_dict={}):
     parser_cmd.add_argument("-c", "--clear", action='store_true', required=False, default=False,
                             help="generate a chain clearing clause before the actual recipe"
                                  " (default: %(default)s)")
-    parser_cmd.add_argument("-in", "--ingress", nargs='?', type=str, const='setup',
+    parser_cmd.add_argument("-in", "--ingress", nargs='?', const='setup', default=None,
                             help="defined ingress control, specifying which ifb device to use;"
                                  " 'setup' means setting up a new ifb device"
                                  " (default: %(default)s)")
@@ -146,8 +146,9 @@ def parse_args(argv, old_args_dict={}):
     if args.subparser == 'tc' and not (args.sclass or args.dclass or args.clear):
         parser.error('No action requested: add at least one of --sclass, --dclass, --clear.')
 
-    args.ingress = None
     if args.subparser == 'tc':
         args.ingress = handle_ingress_arg(args.ingress, args.verbose, parser)
+    else:
+        args.ingress = None
 
     return args
