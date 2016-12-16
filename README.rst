@@ -9,41 +9,41 @@ Installation
 
 !OBSOLETE! Installing using pip is underway but not yet in place. Your patience appreciated ;)
 
-Just copy the pyltc.py module to a known directory on your linux machine where
-you want to do traffic control.
+Check out this repository on your linux machine where you want to do traffic
+control.
 
-After copying the module, please make sure:
+Please make sure:
 
   (a) you have root access while using the tool;
-  (b) you make it executable for the below commands to work::
-
-         # chmod +x ./pyltc.py
 
 
-Examples of usage:
+Examples of command line usage:
 -------------------
+
+```ltc.py``` provides a command line wrapper for the underlying Python
+modules.
 
 Getting the app version::
 
- # ./pyltc.py -V  # note the capital 'V', lowercase means 'verbose'
+ # ./ltc.py -V  # note the capital 'V', lowercase means 'verbose'
 
 Clearing the default lo interface::
 
- # ./pyltc.py tc -c
+ # ./ltc.py tc -c
 
 Clearing the eth0 interface, with verbose output::
 
- # ./pyltc.py tc --clear --iface eth0 -v
+ # ./ltc.py tc --clear --iface eth0 -v
 
 Setting up some dport classes::
 
- # ./pyltc.py tc -c -v --dclass tcp:6000-6080:512kbit
- # ./pyltc.py tc -c -v -i eth0 -dc tcp:6000-6080:512kbit -dc udp:5000-5080:2mbit:3%
- # ./pyltc.py tc -c -v -i eth0 -dc tcp:6000-6080:512kbit -dc udp:5000-5080:2mbit:3% -sc tcp:2000-2080:256kbit -sc udp:3000-3080:1mbit:3%
+ # ./ltc.py tc -c -v --dclass tcp:6000-6080:512kbit
+ # ./ltc.py tc -c -v -i eth0 -dc tcp:6000-6080:512kbit -dc udp:5000-5080:2mbit:3%
+ # ./ltc.py tc -c -v -i eth0 -dc tcp:6000-6080:512kbit -dc udp:5000-5080:2mbit:3% -sc tcp:2000-2080:256kbit -sc udp:3000-3080:1mbit:3%
 
 Setting up some disciplines as defined in 4g-sym profile of a default config file::
 
- # ./pyltc.py profile 4g-sym
+ # ./ltc.py profile 4g-sym
 
 Default config file locations are defined in the module's CONFIG_PATHS constant
 for now (currently being set to ('./pyltc.conf', '/etc/pyltc.conf').
@@ -51,7 +51,7 @@ for now (currently being set to ('./pyltc.conf', '/etc/pyltc.conf').
 
 Setting up some disciplines as defined in 3g-sym profile of the given config file::
 
- # ./pyltc.py profile 3g-sym -c /path/to/config.conf
+ # ./ltc.py profile 3g-sym -c /path/to/config.conf
 
 
 Ingress Traffic Control
@@ -59,11 +59,11 @@ Ingress Traffic Control
 
 (NEW!) Sample command for setting up ingress traffic control::
 
- # ./pyltc.py tc -cvi eth0 --ingress setup -dc tcp:5000-5002:512kbit -dc udp:4000-4002:256kbit
+ # ./ltc.py tc -cvi eth0 --ingress setup -dc tcp:5000-5002:512kbit -dc udp:4000-4002:256kbit
 
 Use 'setup' as an argument to --ingress the first time. For subsequent calls, use 'ifb0'::
 
- # ./pyltc.py tc -cvi eth0 --ingress ifb0 -dc tcp:8080-8088:256kbit:7%
+ # ./ltc.py tc -cvi eth0 --ingress ifb0 -dc tcp:8080-8088:256kbit:7%
  
 This is because ifb0 has been created for you the first time, and if you still keep using 'setup',
 another ifb device will be created --  ifb1, then ifb2, etc. etc. Giving ifb0 to --ingress causes
