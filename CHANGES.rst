@@ -3,6 +3,13 @@ py-linux-traffic-control changes
 =================================
 
 
+v. 0.2.1 (2016-12-16)
+--------------------------
+
+- The monolithic pyltc.py has been broken to a set of sub-modules.
+- Added support for a single port in a dclass/sclass definition.
+
+
 v. 0.1.5 (2016-12-12)
 --------------------------
 
@@ -19,9 +26,11 @@ What's new:
 * the "clear" option now works even if no --dcalss or --sclass given;
 
 * both udp and tcp protocols are supported, thus the new spec token looks like this::
+
   PROTOCOL:RANGE:RATE:JITTER
 
   For example::
+
   tcp:8000-8080:512kbit:5%
 
   As before, RATE or JITTER may be missing, but at least one of the two must be there.

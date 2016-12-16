@@ -46,7 +46,7 @@ Setting up some disciplines as defined in 4g-sym profile of a default config fil
  # ./ltc.py profile 4g-sym
 
 Default config file locations are defined in the module's CONFIG_PATHS constant
-for now (currently being set to ('./pyltc.conf', '/etc/pyltc.conf').
+for now (currently being set to ('./pyltc.profiles', '/etc/pyltc.profiles').
 
 
 Setting up some disciplines as defined in 3g-sym profile of the given config file::
