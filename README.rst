@@ -71,8 +71,9 @@ and then give it to ltc.py as a value to the `--ingress` switch::
 
  # ./ltc.py tc -cvi eth0 --ingress ifb0 -dc tcp:8080-8088:256kbit:7%
 
-Note that you cannot setup egress and ingress controll within the same command. (We may think on
-supporting this in the future, though.)
+Note that you cannot setup egress and ingress controll within the same command,
+or within the same profile. (We may think on supporting this in the future,
+though.)
 
 
 Example config file content::
