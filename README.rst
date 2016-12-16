@@ -70,10 +70,6 @@ If you want to use a specific ifb device, make sure you first create it with::
 and then give it to ltc.py as a value to the `--ingress` switch::
 
  # ./ltc.py tc -cvi eth0 --ingress ifb0 -dc tcp:8080-8088:256kbit:7%
- 
-This is because ifb0 has been created for you the first time, and if you still keep using 'setup',
-another ifb device will be created --  ifb1, then ifb2, etc. etc. Giving ifb0 to --ingress causes
-the tool to reuse ifb0.
 
 Note that you cannot setup egress and ingress controll within the same command. (We may think on
 supporting this in the future, though.)
