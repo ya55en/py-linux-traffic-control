@@ -4,7 +4,7 @@ Default settings for the PyLTC framework.
 """
 
 __version__ = (0, 2, 1)
-__build__ = 39
+__build__ = 40
 __maintainer__ = "Yassen Damyanov <yd-at-itlabs.bg>"
 
 

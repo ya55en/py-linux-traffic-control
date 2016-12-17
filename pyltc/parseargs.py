@@ -63,6 +63,7 @@ def handle_ingress_arg(ingress_arg, verbose_arg, parser):
     if not available_ifbs:
         #CommandLine('modprobe --remove ifb').execute()
         CommandLine('modprobe ifb numifbs=0').execute(verbose=verbose_arg)
+        CommandLine('ip link add ifb0 type ifb').execute(verbose=verbose_arg)
         CommandLine('ip link set dev ifb0 up').execute(verbose=verbose_arg)
         available_ifs = os.listdir('/sys/class/net/')
         available_ifbs = sorted((iface for iface in available_ifs if iface.startswith('ifb')))
