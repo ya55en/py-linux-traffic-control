@@ -139,7 +139,7 @@ def parse_args(argv, old_args_dict={}):
                                  " (default: 'tcp').")
 
     args = parser.parse_args(argv)
-    args.verbose = args.verbose or old_args_dict['verbose']
+    args.verbose = args.verbose or old_args_dict.get('verbose', False)
     if not args.subparser:
         parser.error('No action requested.')
 
