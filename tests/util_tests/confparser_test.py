@@ -106,6 +106,9 @@ class TestCommentedConfig(unittest.TestCase):
         line = " ;one, two #hop";  self.assertEqual(" ", line[:self.find_comment_start(line)])
         line = "; one, two #hop";  self.assertEqual("", line[:self.find_comment_start(line)])
         line = "# one, two ;hop";  self.assertEqual("", line[:self.find_comment_start(line)])
+        line = "foo, bar, baz#";  self.assertEqual("foo, bar, baz", line[:self.find_comment_start(line)])
+        line = "foo, bar, baz;";  self.assertEqual("foo, bar, baz", line[:self.find_comment_start(line)])
+        line = "foo, bar, bazzz";  self.assertEqual("foo, bar, bazzz", line[:self.find_comment_start(line)])
 
     def test_parse_profile_1(self):
         buff = io.StringIO(COMMENTED_CONFIG_SAMPLE)
