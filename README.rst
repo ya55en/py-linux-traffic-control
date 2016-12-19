@@ -75,18 +75,21 @@ Note that you cannot setup egress and ingress controll within the same command,
 or within the same profile. (We may think on supporting this in the future,
 though.)
 
+Comments in profile config files are denoted by semicolon ';' or hash sign '#'.
 
-Example config file content::
+Sample profile config file content::
 
  ----cut here-----------------
+ ; simulating 4G network confitions
  [4g-sym]
  clear
- iface eth0
+ iface eth0 ; the primary interface
  dclass tcp:6000-6999:512kbit
 
+ # simulating 4G network confitions
  [3g-sym]
  clear
- iface eth0
+ iface eth0  # the primary interface
  dclass tcp:8000-8080:96kbit
  dclass udp:5000-5080:96kbit:3%
  sclass tcp:10000-29999:256kbit:1%

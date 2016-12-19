@@ -2,6 +2,11 @@
 py-linux-traffic-control changes
 =================================
 
+v. 0.2.2 (2016-12-16)
+--------------------------
+
+- Comments are supported by the profile confing parser.
+
 
 v. 0.2.1 (2016-12-16)
 --------------------------
