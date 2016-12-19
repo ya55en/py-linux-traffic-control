@@ -93,15 +93,19 @@ class TestConfigParser(unittest.TestCase):
 
 class TestCommentedConfig(unittest.TestCase):
 
+    def find_comment_start(self, line):
+        """Identical to the find_comment_start() inner function in ConfigParser.parse()."""
+        return min((line + "#").find("#"), (line + ";").find(";"))
+
     def test__find_comment_start(self):
         buff = io.StringIO(COMMENTED_CONFIG_SAMPLE)
         conf = ConfigParser(buff)
-        line = "one # two";  self.assertEqual("one ", line[:conf._find_comment_start(line)])
-        line = "one ; two";  self.assertEqual("one ", line[:conf._find_comment_start(line)])
-        line = "one, two";  self.assertEqual("one, two", line[:conf._find_comment_start(line)])
-        line = " ;one, two #hop";  self.assertEqual(" ", line[:conf._find_comment_start(line)])
-        line = "; one, two #hop";  self.assertEqual("", line[:conf._find_comment_start(line)])
-        line = "# one, two ;hop";  self.assertEqual("", line[:conf._find_comment_start(line)])
+        line = "one # two";  self.assertEqual("one ", line[:self.find_comment_start(line)])
+        line = "one ; two";  self.assertEqual("one ", line[:self.find_comment_start(line)])
+        line = "one, two";  self.assertEqual("one, two", line[:self.find_comment_start(line)])
+        line = " ;one, two #hop";  self.assertEqual(" ", line[:self.find_comment_start(line)])
+        line = "; one, two #hop";  self.assertEqual("", line[:self.find_comment_start(line)])
+        line = "# one, two ;hop";  self.assertEqual("", line[:self.find_comment_start(line)])
 
     def test_parse_profile_1(self):
         buff = io.StringIO(COMMENTED_CONFIG_SAMPLE)

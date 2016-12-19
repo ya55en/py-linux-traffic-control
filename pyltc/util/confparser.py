@@ -64,16 +64,16 @@ class ConfigParser(object):
             return self._stream
         raise IllegalState("Povide filename or stream")
 
-    def _find_comment_start(self, line):
-        return min((line + "#").find("#"), (line + ";").find(";"))
-
     def parse(self):
         section = None
         sections = dict()
 
-        def _process_line(line):
+        def find_comment_start(line):
+            return min((line + "#").find("#"), (line + ";").find(";"))
+
+        def process_line(line):
             nonlocal section, sections
-            sig_part = line[:self._find_comment_start(line)].strip()
+            sig_part = line[:find_comment_start(line)].strip()
             if not sig_part:
                 return
             if sig_part.startswith("["):
@@ -91,7 +91,7 @@ class ConfigParser(object):
 
         with self._ensure_stream_open() as fhl:
             for line in fhl:
-                _process_line(line)
+                process_line(line)
         self._sections = sections
         return self
 
