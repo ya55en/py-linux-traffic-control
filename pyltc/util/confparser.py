@@ -38,6 +38,10 @@ class IllegalState(Exception):
 #        in the proper state for that call to be allowed."""
 
 
+class ConfigSyntaxError(Exception):
+    pass
+
+
 class ConfigParser(object):
 
     def __init__(self, input=None):
@@ -60,16 +64,34 @@ class ConfigParser(object):
             return self._stream
         raise IllegalState("Povide filename or stream")
 
+    def _find_comment_start(self, line):
+        return min((line + "#").find("#"), (line + ";").find(";"))
+
     def parse(self):
-        with self._ensure_stream_open() as fhl:
-            content = fhl.read()
-        content = "\n" + content
-        raw_sections = [section for section in content.split("\n[") if section]
-        raw_sections = [elm.replace("\n", " --") for elm in raw_sections]
+        section = None
         sections = dict()
-        for section in raw_sections:
-            rec = [elm for elm in section.split() if elm != '--']
-            sections[rec[0].rstrip("]")] = rec[1:]
+
+        def _process_line(line):
+            nonlocal section, sections
+            sig_part = line[:self._find_comment_start(line)].strip()
+            if not sig_part:
+                return
+            if sig_part.startswith("["):
+                if not sig_part.endswith("]"):
+                    raise ConfigSyntaxError("malformed section header in line %r", line)
+                sections[sig_part[1:-1]] = section = list()
+            elif sig_part.find("]") != -1:
+                raise ConfigSyntaxError("malformed section header in line %r", line)
+            else:
+                if section is None:
+                    raise ConfigSyntaxError("options wihtout section in line %r", line)
+                tokens = sig_part.split()
+                tokens[0] = "--" + tokens[0]
+                section.extend(tokens)
+
+        with self._ensure_stream_open() as fhl:
+            for line in fhl:
+                _process_line(line)
         self._sections = sections
         return self
 
@@ -77,3 +99,4 @@ class ConfigParser(object):
         if not self._sections:
             raise IllegalState("Call parse() first")
         return self._sections[name]
+
