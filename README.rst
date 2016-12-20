@@ -18,7 +18,7 @@ Please make sure you have root access while using the tool.
 Examples of command line usage:
 -------------------
 
-``ltc.py`` provides a command line wrapper for the underlying Python
+`ltc.py` provides a command line wrapper for the underlying Python
 modules.
 
 Getting the app version::
@@ -67,7 +67,7 @@ If you want to use a specific ifb device, make sure you first create it with::
  # modprobe ifb numifbs=0
  # ip link set dev ifbX up  # substitute X with the first not-yet-existing ifb device number
 
-and then give it to ltc.py as a value to the `--ingress` switch::
+and then give it to ltc.py as a value to the *--ingress* switch::
 
  # ./ltc.py tc -cvi eth0 --ingress ifb0 -dc tcp:8080-8088:256kbit:7%
 
@@ -79,27 +79,27 @@ Comments in profile config files are denoted by semicolon ';' or hash sign '#'.
 
 Sample profile config file content::
 
-``ini
-; Simulating outbound 4G network confitions
-[4g-sym]
-clear
-iface eth0 ; the primary interface
-dclass tcp:6000-6999:512kbit
+```ini
+  ; Simulating outbound 4G network confitions
+  [4g-sym]
+  clear
+  iface eth0 ; the primary interface
+  dclass tcp:6000-6999:512kbit
 
-; Simulating inbound 4G network confitions
-[4g-sym]
-clear
-iface eth0 ; the primary interface
-ingress
-dclass tcp:6000-6999:2mbit
+  ; Simulating inbound 4G network confitions
+  [4g-sym]
+  clear
+  iface eth0 ; the primary interface
+  ingress
+  dclass tcp:6000-6999:2mbit
 
-# Simulating outbound 3G network confitions
-[3g-sym]
-clear
-iface eth0  # the primary interface
-dclass tcp:8000-8080:96kbit
-dclass udp:5000-5080:96kbit:3%
-sclass tcp:10000-29999:256kbit:1%
-``
+  # Simulating outbound 3G network confitions
+  [3g-sym]
+  clear
+  iface eth0  # the primary interface
+  dclass tcp:8000-8080:96kbit
+  dclass udp:5000-5080:96kbit:3%
+  sclass tcp:10000-29999:256kbit:1%
+```
 
 Have fun! ;)
