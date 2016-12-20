@@ -18,7 +18,7 @@ Please make sure you have root access while using the tool.
 Examples of command line usage:
 -------------------
 
-```ltc.py``` provides a command line wrapper for the underlying Python
+``ltc.py`` provides a command line wrapper for the underlying Python
 modules.
 
 Getting the app version::
@@ -79,7 +79,7 @@ Comments in profile config files are denoted by semicolon ';' or hash sign '#'.
 
 Sample profile config file content::
 
-```ini
+```
 ; Simulating outbound 4G network confitions
 [4g-sym]
 clear
