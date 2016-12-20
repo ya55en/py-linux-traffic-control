@@ -79,20 +79,27 @@ Comments in profile config files are denoted by semicolon ';' or hash sign '#'.
 
 Sample profile config file content::
 
- ----cut here-----------------
- ; simulating 4G network confitions
- [4g-sym]
- clear
- iface eth0 ; the primary interface
- dclass tcp:6000-6999:512kbit
+```ini
+; Simulating outbound 4G network confitions
+[4g-sym]
+clear
+iface eth0 ; the primary interface
+dclass tcp:6000-6999:512kbit
 
- # simulating 4G network confitions
- [3g-sym]
- clear
- iface eth0  # the primary interface
- dclass tcp:8000-8080:96kbit
- dclass udp:5000-5080:96kbit:3%
- sclass tcp:10000-29999:256kbit:1%
- ----cut here-----------------
+; Simulating inbound 4G network confitions
+[4g-sym]
+clear
+iface eth0 ; the primary interface
+ingress
+dclass tcp:6000-6999:2mbit
+
+# Simulating outbound 3G network confitions
+[3g-sym]
+clear
+iface eth0  # the primary interface
+dclass tcp:8000-8080:96kbit
+dclass udp:5000-5080:96kbit:3%
+sclass tcp:10000-29999:256kbit:1%
+```
 
 Have fun! ;)
