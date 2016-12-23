@@ -10,6 +10,8 @@ TODO: introduce plugin functionality and convert this to the first plugin ;)
 
 from pyltc.parseargs import IllegalArguments
 from pyltc.target import ITarget
+from pyltc.plugins.util import parse_branch
+from parser import ParserError
 
 
 #: netem (the qdisc that simulates special network conditions) works for a
@@ -63,10 +65,13 @@ def shape_sports(chain, range, rate, loss=None):  # TODO: Unused?
     return chain.shape_ports('sport', range, rate, loss)
 
 
-def build_basics(target):
+def build_basics(target, tcp_all_rate, udp_all_rate):
     root_qdisc = target.set_root_qdisc('htb')
-    tcp_class = target.add_class('htb', root_qdisc, rate='30gbit')
-    udp_class = target.add_class('htb', root_qdisc, rate='30gbit')
+
+    tcp_rate = tcp_all_rate if tcp_all_rate else '15gbit'
+    udp_rate = udp_all_rate if udp_all_rate else '15gbit'
+    tcp_class = target.add_class('htb', root_qdisc, rate=tcp_rate)
+    udp_class = target.add_class('htb', root_qdisc, rate=udp_rate)
 
     tcp_filter = target.add_filter('u32', root_qdisc, cond="ip protocol 6 0xff", flownode=tcp_class)
     udp_filter = target.add_filter('u32', root_qdisc, cond="ip protocol 17 0xff", flownode=udp_class)
@@ -79,37 +84,48 @@ def build_basics(target):
 
 def build_range_filters(target, parent, flownode, port_range, offset):
     # tc filter add dev ifb0 protocol ip parent 2:0 prio 1 u32 match ip dport 5001 0xffff flowid 2:1
-    src_dst_type = 'dport' if offset == 2 else 'sport'
+    port_dir = 'dport' if offset == 2 else 'sport'
     if '-' in port_range:
         start, end = map(int, port_range.split('-'))
         for port in range(start, end + 1):
-            target.add_filter('u32', parent, 'ip {} {} 0xffff'.format(src_dst_type, port), flownode)
+            target.add_filter('u32', parent, 'ip {} {} 0xffff'.format(port_dir, port), flownode)
     else:
-        target.add_filter('u32', parent, 'ip {} {} 0xffff'.format(src_dst_type, port_range), flownode)
+        target.add_filter('u32', parent, 'ip {} {} 0xffff'.format(port_dir, port_range), flownode)
+
+
+# def parse_branch_list(args_list):
+#     branches = list()
+#     for args_str in args_list:
+#         current = {'protocol': None, 'range': None, 'rate': None, 'loss': None}
+#         for token in args_str.split(':'):
+#             if '-' in token or token.isdigit():
+#                 current['range'] = token
+#             elif token.endswith('bit') or token.endswith('bps'):
+#                 current['rate'] = token
+#             elif token.endswith('%'):
+#                 current['loss'] = token
+#             elif token in ('tcp', 'udp'):
+#                 current['protocol'] = token
+#             else: # unrecognizable protocol or nothing will be treated as tcp #FIXME: Is this alright?
+#                 current['protocol'] = 'tcp'
+#         branches.append(current)
+#     return branches
 
 
 def parse_branch_list(args_list):
     branches = list()
     for args_str in args_list:
-        current = {'protocol': None, 'range': None, 'rate': None, 'loss': None}
+        current = parse_branch(args_str)
         branches.append(current)
-        for token in args_str.split(':'):
-            if '-' in token or token.isdigit():
-                current['range'] = token
-            elif token.endswith('bit') or token.endswith('bps'):
-                current['rate'] = token
-            elif token.endswith('%'):
-                current['loss'] = token
-            elif token in ('tcp', 'udp'):
-                current['protocol'] = token
-            else: # unrecognizable protocol or nothing will be treated as tcp #FIXME: Is this alright?
-                current['protocol'] = 'tcp'
     return branches
 
 
 def build_tree(target, tcphook, udphook, args_list, offset, is_ingress=False):
     branches = parse_branch_list(args_list)
     for branch in branches:
+        if branch['range'] == 'all':
+            continue
+
         if branch['protocol'] == 'tcp':
             hook = tcphook
         elif branch['protocol'] == 'udp':
@@ -119,7 +135,7 @@ def build_tree(target, tcphook, udphook, args_list, offset, is_ingress=False):
             #raise RuntimeError('UNREACHABLE')
 
         # class(htb) - shaping
-        rate = branch['rate'] if branch['rate'] else '30gbit'  # TODO: move this to a constant
+        rate = branch['rate'] if branch['rate'] else '15gbit'  # TODO: move this to a constant
         htb_class = target.add_class('htb', hook, rate=rate)
         # filter(basic) - port
         if is_ingress or '-' not in branch['range']:
@@ -133,6 +149,24 @@ def build_tree(target, tcphook, udphook, args_list, offset, is_ingress=False):
         if branch['loss']:
             netem_qdisc = target.add_qdisc('netem', parent=htb_class, loss=branch['loss'], limit=NETEM_LIMIT)
 
+
+def determine_all_rates(dclasses, sclasses):
+    tcp_all_rate = False # serves as flag too
+    udp_all_rate = False # serves as flag too
+    for classes in (dclasses, sclasses):
+        if not classes:
+            continue
+        for some_class in classes:
+            parsed = parse_branch(some_class)
+            if parsed['range'] == 'all' and parsed['protocol'] == 'tcp':
+                if tcp_all_rate:
+                    raise ParserError("More than one 'all' range detected for the same protocol(tcp).")
+                tcp_all_rate = parsed['rate']
+            elif parsed['range'] == 'all' and parsed['protocol'] == 'udp':
+                if udp_all_rate:
+                    raise ParserError("More than one 'all' range detected for the same protocol(udp).")
+                udp_all_rate = parsed['rate']
+    return tcp_all_rate, udp_all_rate
 
 ITarget.shape_ports = shape_ports
 ITarget.shape_dports = shape_dports
@@ -152,7 +186,8 @@ def plugin_main(args, iface, ifbdev):
             cmd = ("tc filter add dev {} parent ffff: protocol ip"
                    + " u32 match u32 0 0 action mirred egress redirect dev {}").format(iface.name, ifbdev.name)
             chain._commands.append(cmd)
-        tcp_hook, udp_hook = build_basics(chain)
+        tcp_all_rate, udp_all_rate = determine_all_rates(args.dclass, args.sclass)
+        tcp_hook, udp_hook = build_basics(chain, tcp_all_rate, udp_all_rate)
     if args.dclass:
         build_tree(chain, tcp_hook, udp_hook, args.dclass, offset=2, is_ingress=bool(args.ingress))
     if args.sclass:
