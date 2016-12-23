@@ -2,6 +2,14 @@
 py-linux-traffic-control changes
 =================================
 
+v. 0.3.0 (2016-12-23)
+--------------------------
+- Functional testing framework introduced based on iperf.
+- Supporting 'all' keyword for port ranges in sclass/dclass option values,
+  which is interpreted as applying shaping to all ports for that protocol
+  (tcp or udp). 
+
+
 v. 0.2.2 (2016-12-16)
 --------------------------
 

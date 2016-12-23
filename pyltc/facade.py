@@ -17,10 +17,10 @@ class TrafficControl(object):
         Qdisc._major_counter = 1
 
     @classmethod
-    def get_iface(cls, ifname):
+    def get_iface(cls, ifname, target_factory=None):
         try:
             return cls._iface_map[ifname]
         except KeyError:
-            iface = Interface(ifname)
+            iface = Interface(ifname, target_factory)
             cls._iface_map[ifname] = iface
             return iface

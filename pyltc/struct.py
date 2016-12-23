@@ -112,11 +112,17 @@ class Filter(object):
     """Represents a filter node in the LTC chain structure."""
 
     _handle_counter = 1
+    _prio_counter = 1
 
     def __init__(self, name, parent, cond, flownode, **kw):
         # TODO: implement proper data handling
         self._handle = self.__class__._handle_counter
         self.__class__._handle_counter += 1
+
+    @classmethod
+    def prio_counter(cls):
+        cls._prio_counter += 1
+        return cls._prio_counter - 1
 
     @property
     def nodeid(self):

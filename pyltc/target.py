@@ -159,9 +159,10 @@ class TcFileTarget(ITarget):
             'parentid': parent.nodeid,
             'cond': cond,
             'flowid': flownode.nodeid,
+            'prio': Filter.prio_counter()
             # 'handle': filter._handle,
         }
-        cmd = ("tc filter add dev {iface} parent {parentid} protocol ip prio 1"
+        cmd = ("tc filter add dev {iface} parent {parentid} protocol ip prio {prio}"
                " {name} match {cond} flowid {flowid}").format(**cmd_params)
         self._commands.append(cmd)
         return filter
