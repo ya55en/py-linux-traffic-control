@@ -77,14 +77,15 @@ def build_basics(target):
     return tcp_qdisc, udp_qdisc
 
 
-def build_range_filters(target, parent, flownode, port_range):
+def build_range_filters(target, parent, flownode, port_range, offset):
     # tc filter add dev ifb0 protocol ip parent 2:0 prio 1 u32 match ip dport 5001 0xffff flowid 2:1
+    src_dst_type = 'dport' if offset == 2 else 'sport'
     if '-' in port_range:
         start, end = map(int, port_range.split('-'))
         for port in range(start, end + 1):
-            target.add_filter('u32', parent, 'ip dport {} 0xffff'.format(port), flownode)
+            target.add_filter('u32', parent, 'ip {} {} 0xffff'.format(src_dst_type, port), flownode)
     else:
-        target.add_filter('u32', parent, 'ip dport {} 0xffff'.format(port_range), flownode)
+        target.add_filter('u32', parent, 'ip {} {} 0xffff'.format(src_dst_type, port_range), flownode)
 
 
 def parse_branch_list(args_list):
@@ -122,7 +123,7 @@ def build_tree(target, tcphook, udphook, args_list, offset, is_ingress=False):
         htb_class = target.add_class('htb', hook, rate=rate)
         # filter(basic) - port
         if is_ingress or '-' not in branch['range']:
-            build_range_filters(target, hook, htb_class, branch['range'])
+            build_range_filters(target, hook, htb_class, branch['range'], offset)  # FIXME: use better means to communicate dport/sport case
         else:
             start, end = (int(elm) for elm in branch['range'].split("-"))
             cond_port_range = '"cmp(u16 at {} layer transport gt {}) and cmp(u16 at {} layer transport lt {})"' \
