@@ -74,36 +74,48 @@ class TestPyLtcLive(unittest.TestCase):
     def test_simple_tcp(self):
         print('test_simple_tcp BEGIN')
         cases = ['tcp:9100-9110:512kbit']
-        self._do_test(cases)#, tcp_free_rate=4500000000)
+        self._do_test(cases)
         print('test_simple_tcp END')
+
+    def test_single_port_tcp(self):
+        print('test_single_port_tcp BEGIN')
+        cases = ['tcp:9200:3mbit']
+        self._do_test(cases)
+        print('test_single_port_tcp END')
 
     def test_double_tcp(self):
         print('test_double_tcp BEGIN')
-        cases = ['tcp:9200:1mbit', 'tcp:9300-9310:512kbit']
-        self._do_test(cases)#, tcp_free_rate=4500000000)
+        cases = ['tcp:9300:1mbit', 'tcp:9400-9410:512kbit']
+        self._do_test(cases)
         print('test_double_tcp END')
 
     def test_simple_udp(self):
         print('test_simple_udp BEGIN')
-        cases = ['udp:9400-9410:2mbit']
+        cases = ['udp:9500-9510:2mbit']
         self._do_test(cases, udp_free_rate=10000000)
         print('test_simple_udp END')
 
+    def test_single_port_udp(self):
+        print('test_single_port_udp BEGIN')
+        cases = ['udp:9600:256kbit']
+        self._do_test(cases, udp_free_rate=10000000)
+        print('test_single_port_udp END')
+
     def test_double_udp(self):
         print('test_double_udp BEGIN')
-        cases = ['udp:9500:4mbit', 'udp:9600-9610:2mbit']
+        cases = ['udp:9700:4mbit', 'udp:9800-9810:2mbit']
         self._do_test(cases, udp_free_rate=10000000)
         print('test_double_udp END')
 
     def test_ingress_simple(self):
         print('test_ingress_simple BEGIN')
-        cases = ['tcp:9700-9710:1mbit']
-        self._do_test(cases)#, tcp_free_rate=6000000000)
+        cases = ['tcp:9900-9910:1mbit']
+        self._do_test(cases)
         print('test_ingress_simple END')
 
     def test_ingress_complex(self):
         print('test_ingress_complex BEGIN')
-        cases = ['tcp:9800:786kbit', 'udp:9900-9910:3mbit']
+        cases = ['tcp:10000:786kbit', 'udp:10100-10110:3mbit']
         self._do_test(cases, udp_free_rate=10000000)#, tcp_free_rate=6000000000, udp_free_rate=10000000)
         print('test_ingress_complex END')
 

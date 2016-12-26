@@ -2,6 +2,7 @@
 tc rate string splitter / validator.
 See http://man7.org/linux/man-pages/man8/tc.8.html#PARAMETERS
 """
+import re
 
 _MAN_PAGE_DUMP = """
     bit or a bare number
@@ -64,21 +65,15 @@ _UNITS = _RATE_KOEFF = {
 def split_rate(ratestr, validate=False):
     """Splits given rate string and returns a two-element tuple (rate:int, units:str).
        Will optionally validate the rate string given if validate is True."""
-    unit_idx = -5
-    try:
-        if ratestr[-4].isdigit():
-            unit_idx = -3
-        elif ratestr[-5].isdigit():
-            unit_idx = -4
-    except IndexError:
+
+    regex = re.compile("^(\d+)([a-z]+)$")
+    match = regex.match(ratestr)
+    if not match:
         raise ValueError("Illegal rate string: {!r}".format(ratestr))
-    rate = ratestr[:unit_idx]
-    units = ratestr[unit_idx:]
-    if validate:
-        if not (rate.isdigit() and units.isalpha()):
-            raise ValueError("Illegal rate string: {!r}".format(ratestr))
-        if not units in _UNITS:
-            raise ValueError("Illegal rate units for: {!r}".format(ratestr))
+    rate = match.group(1)
+    units = match.group(2)
+    if validate and units not in _UNITS.keys():
+        raise ValueError("Illegal rate string: {!r}".format(ratestr))
     return int(rate), units
 
 

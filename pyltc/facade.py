@@ -3,7 +3,7 @@ Facade for the PyLTC framework.
 
 """
 from pyltc.device import Interface
-from pyltc.struct import Qdisc
+from pyltc.struct import Qdisc, Filter
 
 
 class TrafficControl(object):
@@ -15,6 +15,7 @@ class TrafficControl(object):
     def init(cls):
         cls._iface_map = dict()
         Qdisc._major_counter = 1
+        Filter._prio_counter = 1
 
     @classmethod
     def get_iface(cls, ifname, target_factory=None):

@@ -49,6 +49,10 @@ class TestValidateRate(unittest.TestCase):
         self.assertRaises(ValueError, split_rate, '5kbuts', validate=True)
         self.assertRaises(ValueError, split_rate, '5foos', validate=True)
 
+    def test_wrong_suffix_passes(self):
+        self.assertEqual((5, 'kbuts'), split_rate('5kbuts', validate=False))
+        self.assertEqual((5, 'foos'), split_rate('5foos', validate=False))
+
 
 class TestSplitRate(unittest.TestCase):
 

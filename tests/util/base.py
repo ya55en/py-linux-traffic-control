@@ -96,6 +96,8 @@ class LtcLiveTargetRun(object):
             result[dc] = bandwidth_dict
 
         self._result = result
+# This here shows an example of what the function returns (since it is not too simple):
+# (as of now the 'random' ports are not yet implemented)
 #         return {
 #             'tcp:8080:512kbit': {
 #                 'left-in': 782323,
