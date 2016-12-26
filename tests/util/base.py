@@ -61,16 +61,11 @@ class LtcLiveTargetRun(object):
     def _target_factory(self, iface, direction):
         return TcCommandTarget(iface, direction)
 
-    def _test_for_portrange(self, klass, port_range, sendrate):
-        if '-' in port_range:
-            left_in_port, right_in_port = map(int, port_range.split('-'))
-            left_out_port = left_in_port - 1
-            right_out_port = right_in_port + 1
-
-        else:
-            left_in_port = right_in_port = int(port_range)
-            left_out_port = left_in_port - 1
-            right_out_port = right_in_port + 1
+    def _test_for_port_range(self, klass, port_range, sendrate):
+        left_in_port, right_in_port, *_ = map(int, (port_range + "-0").split('-'))
+        right_in_port = right_in_port if right_in_port else left_in_port
+        left_out_port = left_in_port - 1
+        right_out_port = right_in_port + 1
 
         bandwidth_dict = {}
         tcp_netperf_1 = klass(sendrate, ip='127.0.0.1', port=left_in_port, duration=self._duration)
@@ -92,10 +87,11 @@ class LtcLiveTargetRun(object):
         for dc in args.dclass:
             dc_dict = parse_branch(dc)
             klass = TCPNetPerfTest if dc_dict['protocol'] == 'tcp' else UDPNetPerfTest
-            bandwidth_dict = self._test_for_portrange(klass, dc_dict['range'], self._udp_sendrate)
+            bandwidth_dict = self._test_for_port_range(klass, dc_dict['range'], self._udp_sendrate)
             result[dc] = bandwidth_dict
 
         self._result = result
+
 # This here shows an example of what the function returns (since it is not too simple):
 # (as of now the 'random' ports are not yet implemented)
 #         return {
