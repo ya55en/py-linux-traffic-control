@@ -20,8 +20,11 @@ from tests.util.base import LtcLiveTargetRun
 from tests.util.iperf_proc import TCPNetPerfTest
 
 
+#: the standard duration for which the iperf client sends data to the iperf server
 DURATION = 2
+#: shall the test runs be verbose or not (TODO: make this a command line option)
 VERBOSITY = False
+#: the ratio of measured/expected rate when no shaping is applied that we tolerate as acceptable for tests to pass
 MAX_FREE_RATE_TOLERANCE = 0.75
 MAX_SHAPED_TOLERANCE = 0.25
 

@@ -2,6 +2,13 @@
 py-linux-traffic-control changes
 =================================
 
+
+v. 0.3.1 (2016-12-26)
+--------------------------
+- Ingress filtering reverted to single ematch filter (vs. using N single-port u32 filters).
+- Imrpovements of the functional testing framework.
+
+
 v. 0.3.0 (2016-12-23)
 --------------------------
 - Functional testing framework introduced based on iperf.
