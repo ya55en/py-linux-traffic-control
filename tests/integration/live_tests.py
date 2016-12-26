@@ -39,12 +39,13 @@ class TestPyLtcLive(unittest.TestCase):
         return 'Expected relative error margin max {} but got {}'.format(margin, actual)
 
     def _check_bandwidth(self, norm, bandwidth, margin):
-        print('norm: {!r}, bandwidth: {!r}, margin: {!r}'.format(norm, bandwidth, margin), flush=True)
         if bandwidth > norm:
             actual = bandwidth / norm - 1.0
+            print('norm: {!r}, bandwidth: {!r}, margin: {!r}, actual: {:.4f}'.format(norm, bandwidth, margin, actual))
             self.assertLess(actual, margin, self._err_message(margin, actual))
         elif bandwidth < norm:
             actual = norm / bandwidth - 1.0
+            print('norm: {!r}, bandwidth: {!r}, margin: {!r}, actual: {:.4f}'.format(norm, bandwidth, margin, actual))
             self.assertLess(actual, margin, self._err_message(margin, actual))
         else:
             self.assertEqual(norm, bandwidth)
@@ -62,7 +63,8 @@ class TestPyLtcLive(unittest.TestCase):
         live_test = LtcLiveTargetRun(argv_list, udp_sendrate='10mbit', duration=DURATION)
         live_test.run()
         for case in cases:
-            assert ('tcp' in case and tcp_free_rate) or ('udp' in case and udp_free_rate)
+            assert ('tcp' in case and tcp_free_rate) or ('udp' in case and udp_free_rate),\
+                    'case: {!r}, tcp_free_rate: {!r}, udp_free_rate: {!r}'.format(case, tcp_free_rate, udp_free_rate)
             free_rate = tcp_free_rate if 'tcp' in case else udp_free_rate
             branch = parse_branch(case)
             results = live_test.result[case]
@@ -107,15 +109,21 @@ class TestPyLtcLive(unittest.TestCase):
         self._do_test(cases, udp_free_rate=10000000)
         print('test_double_udp END')
 
-    def test_ingress_simple(self):
+    def test_ingress_tcp(self):
         print('test_ingress_simple BEGIN')
         cases = ['tcp:9900-9910:1mbit']
         self._do_test(cases)
         print('test_ingress_simple END')
 
+    def test_ingress_udp(self):
+        print('test_ingress_simple BEGIN')
+        cases = ['udp:10000-10010:2mbit']
+        self._do_test(cases, udp_free_rate=10000000)
+        print('test_ingress_simple END')
+
     def test_ingress_complex(self):
         print('test_ingress_complex BEGIN')
-        cases = ['tcp:10000:786kbit', 'udp:10100-10110:3mbit']
+        cases = ['tcp:10100:786kbit', 'udp:10200-10210:3mbit']
         self._do_test(cases, udp_free_rate=10000000)#, tcp_free_rate=6000000000, udp_free_rate=10000000)
         print('test_ingress_complex END')
 
