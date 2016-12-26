@@ -82,34 +82,9 @@ def build_basics(target, tcp_all_rate, udp_all_rate):
     return tcp_qdisc, udp_qdisc
 
 
-def build_range_filters(target, parent, flownode, port_range, offset):
-    # tc filter add dev ifb0 protocol ip parent 2:0 prio 1 u32 match ip dport 5001 0xffff flowid 2:1
+def build_single_port_filter(target, parent, flownode, port, offset):
     port_dir = 'dport' if offset == 2 else 'sport'
-    if '-' in port_range:
-        start, end = map(int, port_range.split('-'))
-        for port in range(start, end + 1):
-            target.add_filter('u32', parent, 'ip {} {} 0xffff'.format(port_dir, port), flownode)
-    else:
-        target.add_filter('u32', parent, 'ip {} {} 0xffff'.format(port_dir, port_range), flownode)
-
-
-# def parse_branch_list(args_list):
-#     branches = list()
-#     for args_str in args_list:
-#         current = {'protocol': None, 'range': None, 'rate': None, 'loss': None}
-#         for token in args_str.split(':'):
-#             if '-' in token or token.isdigit():
-#                 current['range'] = token
-#             elif token.endswith('bit') or token.endswith('bps'):
-#                 current['rate'] = token
-#             elif token.endswith('%'):
-#                 current['loss'] = token
-#             elif token in ('tcp', 'udp'):
-#                 current['protocol'] = token
-#             else: # unrecognizable protocol or nothing will be treated as tcp #FIXME: Is this alright?
-#                 current['protocol'] = 'tcp'
-#         branches.append(current)
-#     return branches
+    target.add_filter('u32', parent, 'ip {} {} 0xffff'.format(port_dir, port), flownode)
 
 
 def parse_branch_list(args_list):
@@ -138,8 +113,8 @@ def build_tree(target, tcphook, udphook, args_list, offset, is_ingress=False):
         rate = branch['rate'] if branch['rate'] else '15gbit'  # TODO: move this to a constant
         htb_class = target.add_class('htb', hook, rate=rate)
         # filter(basic) - port
-        if is_ingress or '-' not in branch['range']:
-            build_range_filters(target, hook, htb_class, branch['range'], offset)  # FIXME: use better means to communicate dport/sport case
+        if '-' not in branch['range']:
+            build_single_port_filter(target, hook, htb_class, branch['range'], offset)  # FIXME: use better means to communicate dport/sport case
         else:
             start, end = (int(elm) for elm in branch['range'].split("-"))
             cond_port_range = '"cmp(u16 at {} layer transport gt {}) and cmp(u16 at {} layer transport lt {})"' \

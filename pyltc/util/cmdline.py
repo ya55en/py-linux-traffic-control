@@ -2,7 +2,7 @@
 Command line execution utility module.
 
 """
-
+import time
 import subprocess
 
 
@@ -30,7 +30,6 @@ def popen_factory():
                 self.returncode = 1
                 return None, None
             if self._cmd_list[0].endswith('sleep'):
-                import time
                 pause = float(self._cmd_list[1])
                 if timeout and timeout < pause:
                         time.sleep(timeout)
@@ -70,6 +69,7 @@ class CommandLine(object):
         self._returncode = None
         self._stdout = None
         self._stderr = None
+        self._proc = None
 
     @property
     def cmdline(self):
@@ -89,11 +89,35 @@ class CommandLine(object):
         # recursively process the rest of the line
         return left.split() + [mid] + self._construct_cmd_list(right)
 
+    def terminate(self):
+        if not self._proc:
+            return None
+        self._proc.terminate()
+        rc = self._proc.poll()
+        c = 0
+        while rc == None:
+            time.sleep(0.1)
+            if c > 19:
+                self._proc.kill()
+                break
+            c += 1
+            rc = self._proc.poll()
+        time.sleep(0.1)
+        return self._proc.poll()
+
+    def execute_daemon(self):
+        command_list = self._construct_cmd_list(self._cmdline)
+        PopenClass = popen_factory()
+        proc = PopenClass(command_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self._proc = proc
+        return self  # allows for one-line creation + execution with assignment
+
     def execute(self, verbose=False, timeout=10):
         """Prepares and executes the command."""
         command_list = self._construct_cmd_list(self._cmdline)
         PopenClass = popen_factory()
         proc = PopenClass(command_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self._proc = proc
         stdout, stderr = proc.communicate(timeout=timeout)
         self._stdout = stdout.decode('unicode_escape') if stdout else ""
         self._stderr = stderr.decode('unicode_escape') if stderr else ""
@@ -103,7 +127,7 @@ class CommandLine(object):
             print(" #", self._cmdline)
         if rc and not self._ignore_errors:
             raise CommandFailed(self)
-        return self  # allows one-line creation + execution with assignment
+        return self  # allows for one-line creation + execution with assignment
 
     @property
     def returncode(self):

@@ -14,7 +14,7 @@ class Interface(object):
     LTC chains.
     """
 
-    def __init__(self, name, target_factory=default_target_factory):
+    def __init__(self, name, target_factory=None):
         """
         Initializes this interface object. See default_target_factory for
         details about the target_factory argument.
@@ -24,6 +24,8 @@ class Interface(object):
                                signature.
         """
         self._name = name
+        if not target_factory:
+            target_factory = default_target_factory
         self._egress_chain = target_factory(self, DIR_EGRESS)
         self._ingress_chain = target_factory(self, DIR_INGRESS)
 

@@ -16,7 +16,7 @@ Please make sure you have root access while using the tool.
 
 
 Examples of command line usage:
--------------------
+-------------------------------
 
 ltc.py provides a command line wrapper for the underlying Python
 modules.
@@ -53,7 +53,7 @@ Setting up some disciplines as defined in 3g-sym profile of the given config fil
 
 
 Ingress Traffic Control
--------------------
+-----------------------
 
 Sample command for setting up ingress traffic control creating a new ifb device::
 
@@ -99,5 +99,42 @@ Sample profile config file content::
  dclass tcp:8000-8080:96kbit
  dclass udp:5000-5080:96kbit:3%
  sclass tcp:10000-29999:256kbit:1%
+
+
+Functional Testing
+------------------
+
+New functional test framework has been added with v. 0.3.0.
+
+*************
+Prerequisites
+*************
+
+The live tests are based on ``iperf``. You will need iperf (NOT ``iperf3``).
+On debian-based distros installing it would look like::
+
+$ sudo apt-get install iperf
+
+**********
+How to run
+**********
+
+To run the current test suite, root start it from the project root with::
+
+$ sudo python3 tests/integration/live_tests.py
+
+The suite will execute a series of iperf-based measurements. The overall time is about 6-8 min.
+
+
+This is a first iteration for functional testing, improvements will be needed for sure.
+This however will help keep the tool in good shape!
+
+Important TODOs:
+
+- Support sclass setups. Currently iperf works in a way that the server always 'downloads'
+  and thus only dclass shaping is applicable.
+
+- Support ingress and egress shaping in the same test scenario.
+
 
 Have fun! ;)

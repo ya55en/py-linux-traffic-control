@@ -19,9 +19,10 @@ from pyltc.device import Interface
 from pyltc.facade import TrafficControl
 from pyltc.parseargs import handle_version_arg, parse_args, parse_ini_file
 from pyltc.plugins import thehunmonkgroup
+from parser import ParserError
 
 
-def pyltc_entry_point(argv=None):
+def pyltc_entry_point(argv=None, target_factory=None):
     """
     Calls the parseargs stuff to make sure all common arguments
     are handled properly, then executes the default plugin entry point.
@@ -31,7 +32,6 @@ def pyltc_entry_point(argv=None):
     """
     if not argv:
         argv = sys.argv[1:]
-
     handle_version_arg(argv)
     args = parse_args(argv)
     if args.verbose:
@@ -43,7 +43,10 @@ def pyltc_entry_point(argv=None):
         args = parse_args(profile_args, old_args_dict)
 
     TrafficControl.init()
-    iface = TrafficControl.get_iface(args.iface)
+    iface = TrafficControl.get_iface(args.iface, target_factory)
     ifbdev = Interface.new_instance(args.ingress)  # returns a "Null" Interface object if args.ingress is None
-
-    thehunmonkgroup.plugin_main(args, iface, ifbdev)
+    try:
+        thehunmonkgroup.plugin_main(args, iface, ifbdev)
+    except ParserError as err:
+        print("ltc.py: error:", err, file=sys.stderr)
+        return 2

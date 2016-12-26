@@ -63,6 +63,16 @@ class TestQdiscClass(unittest.TestCase):
 
 class TestFilter(unittest.TestCase):
 
+    def test_prio_counter(self):
+        saved = Filter._prio_counter
+        try:
+            Filter._prio_counter = 1
+            self.assertEqual(1, Filter.prio_counter())
+            self.assertEqual(2, Filter.prio_counter())
+        finally:
+            Filter._prio_counter = saved
+
+
     def test_wishful_api(self):
         Qdisc._major_counter = 1
         qdisc = Qdisc('htb', None, default=99)
