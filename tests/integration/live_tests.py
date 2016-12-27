@@ -5,14 +5,16 @@ We execute actual tc commands and then launch iperf server and client
 and measure the badwith.
 
 """
-from os.path import abspath, normpath, dirname, join as pjoin
-REPO_ROOT = normpath(abspath(pjoin(dirname(__file__), "..", "..")))
-
+import unittest
+import os
 import sys
+import shutil
+from os.path import abspath, normpath, dirname, exists, join as pjoin
+
+REPO_ROOT = normpath(abspath(pjoin(dirname(__file__), "..", "..")))
 if not REPO_ROOT in sys.path:
     sys.path.append(REPO_ROOT)
 
-import unittest
 from pyltc import DIR_EGRESS
 from pyltc.main import pyltc_entry_point
 from pyltc.plugins.util import parse_branch
@@ -22,18 +24,19 @@ from tests.util.iperf_proc import TCPNetPerfTest
 from pyltc.target import TcTarget
 
 
-#: the standard duration for which the iperf client sends data to the iperf server
+#: the standard duration (in sec.) for which the iperf client sends data to the iperf server
 DURATION = 2
 #: shall the test runs be verbose or not (TODO: make this a command line option)
 VERBOSITY = False
 #: the ratio of measured/expected rate when no shaping is applied that we tolerate as acceptable for tests to pass
 MAX_FREE_RATE_TOLERANCE = 0.75
 MAX_SHAPED_TOLERANCE = 0.25
-RECORD_MODE = True
+
+DEFAULT_TEST_HOST = '127.0.0.1'
+DEFAULT_TEST_PORT = 5001
 
 
 class TcRecordTarget(TcTarget):
-
     """A Target class that sends generated commands to caller
     instead of executing/writing in file. Used for testing purposes."""
 
@@ -48,16 +51,30 @@ class TcRecordTarget(TcTarget):
 
 
 class TestPyLtcLive(unittest.TestCase):
+    """
+    Live test setting up traffic control and then executing iperf server + client
+    for different ports (shaped and not-shaped).
+    """
+
+    record_mode = False
 
     @classmethod
     def setUpClass(cls):
-        if RECORD_MODE:
-            print('RECORD MODE')
-            cls._record_count = 0
+        if cls.record_mode:
+            print('--Record mode ON--')
+            cls._rec_count = 0
+            data_dir = pjoin(REPO_ROOT, "tmp", "testdata", "recorded")
+            if exists(data_dir):
+                shutil.rmtree(data_dir)
+            assert not exists(data_dir)
+            os.makedirs(data_dir)
+            cls._data_dir = data_dir
+
         else:
+            print('--Record mode OFF--')
             pyltc_entry_point(['tc', '-i', 'lo', '-c', '-in'])
             pyltc_entry_point(['tc', '-i', 'lo', '-c', '--dclass', 'tcp:15000:512kbit', '--dclass', 'tcp:16001-16005:1mbit'])
-            tcp_netperf = TCPNetPerfTest('dummy', ip='127.0.0.1', port=5001, duration=2)
+            tcp_netperf = TCPNetPerfTest('dummy', host='127.0.0.1', port=DEFAULT_TEST_PORT, duration=DURATION)
             cls.tcp_free_rate = tcp_netperf.run()
 
     def setUp(self):
@@ -78,6 +95,11 @@ class TestPyLtcLive(unittest.TestCase):
         else:
             self.assertEqual(norm, bandwidth)
 
+    def tc_recording_target_factory(self, iface, direction):
+        target = TcRecordTarget(iface, direction)
+        self._targets.append(target)
+        return target
+
     def _do_live(self, cases, tcp_free_rate=None, udp_free_rate=None):
         if not tcp_free_rate:
             tcp_free_rate = self.tcp_free_rate
@@ -92,7 +114,7 @@ class TestPyLtcLive(unittest.TestCase):
         live_test = LtcLiveTargetRun(arg_list, udp_sendrate='10mbit', duration=DURATION)
         live_test.run()
         for case in cases:
-            assert ('tcp' in case and tcp_free_rate) or ('udp' in case and udp_free_rate),\
+            assert ('tcp' in case and tcp_free_rate) or ('udp' in case and udp_free_rate), \
                     'case: {!r}, tcp_free_rate: {!r}, udp_free_rate: {!r}'.format(case, tcp_free_rate, udp_free_rate)
             free_rate = tcp_free_rate if 'tcp' in case else udp_free_rate
             branch = parse_branch(case)
@@ -102,18 +124,17 @@ class TestPyLtcLive(unittest.TestCase):
             self._check_bandwidth(convert2bps(branch['rate']), results['right_in'], MAX_SHAPED_TOLERANCE)
             self._check_bandwidth(free_rate, results['right_out'], MAX_FREE_RATE_TOLERANCE)
 
-
-    def _target_factory(self, iface, direction):
-        target = TcRecordTarget(iface, direction)
-        self._targets.append(target)
-#         print("_target_factory() produced", target)
-        return target
+    def _do_record(self, cases):
+        arg_list = ['tc', '-i', 'lo', '-c']
+        for case in cases:
+            arg_list.extend(('--dclass', case))
+        pyltc_entry_point(arg_list, self.tc_recording_target_factory)
+        self._create_data_file(arg_list, self._targets)
 
     def _create_data_file(self, arg_list, targets):
-        self.__class__._record_count += 1
-        fname = pjoin(REPO_ROOT, 'tests/integration/data/testfile{}'.format(self._record_count))
+        self.__class__._rec_count += 1
+        fname = pjoin(self._data_dir, "testfile-{}.txt".format(self._rec_count))
         with open(fname, 'w') as fhl:
-#         with open('./data/tesfile{}'.format(self._record_count), 'w') as fhl:
             fhl.write(" ".join(arg_list) + '\n\n')
             assert len(targets) == 2 and (bool(targets[0]._commands) != bool(targets[1]._commands)), "targets: {}".format(targets)
             target = targets[0] if targets[0] else targets[1]
@@ -121,14 +142,10 @@ class TestPyLtcLive(unittest.TestCase):
                 fhl.write(line + '\n')
 
     def _do_test(self, cases, tcp_free_rate=None, udp_free_rate=None):
-        if RECORD_MODE:
-            arg_list = ['tc', '-i', 'lo', '-c']
-            for case in cases:
-                arg_list.extend(('--dclass', case))
-            pyltc_entry_point(arg_list, self._target_factory)
-            self._create_data_file(arg_list, self._targets)
+        if self.record_mode:
+            self._do_record(cases)
         else:
-            self._do_live(cases, tcp_free_rate=None, udp_free_rate=None)
+            self._do_live(cases, tcp_free_rate, udp_free_rate)
 
     def test_simple_tcp(self):
         print('test_simple_tcp BEGIN')
@@ -187,4 +204,9 @@ class TestPyLtcLive(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    import sys
+    if 'record' in sys.argv:
+        TestPyLtcLive.record_mode = True
+        sys.argv.remove('record')
+        print('Record mode detected')
     unittest.main()

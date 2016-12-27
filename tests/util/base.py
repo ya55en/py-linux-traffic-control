@@ -68,13 +68,13 @@ class LtcLiveTargetRun(object):
         right_out_port = right_in_port + 1
 
         bandwidth_dict = {}
-        tcp_netperf_1 = klass(sendrate, ip='127.0.0.1', port=left_in_port, duration=self._duration)
+        tcp_netperf_1 = klass(sendrate, host='127.0.0.1', port=left_in_port, duration=self._duration)
         bandwidth_dict['left_in'] = tcp_netperf_1.run()
-        tcp_netperf_2 = klass(sendrate, ip='127.0.0.1', port=left_out_port, duration=self._duration)
+        tcp_netperf_2 = klass(sendrate, host='127.0.0.1', port=left_out_port, duration=self._duration)
         bandwidth_dict['left_out'] = tcp_netperf_2.run()
-        tcp_netperf_3 = klass(sendrate, ip='127.0.0.1', port=right_in_port, duration=self._duration)
+        tcp_netperf_3 = klass(sendrate, host='127.0.0.1', port=right_in_port, duration=self._duration)
         bandwidth_dict['right_in'] = tcp_netperf_3.run()
-        tcp_netperf_4 = klass(sendrate, ip='127.0.0.1', port=right_out_port, duration=self._duration)
+        tcp_netperf_4 = klass(sendrate, host='127.0.0.1', port=right_out_port, duration=self._duration)
         bandwidth_dict['right_out'] = tcp_netperf_4.run()
 
         return bandwidth_dict
