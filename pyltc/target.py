@@ -227,5 +227,5 @@ def default_target_factory(iface, direction):
     """
     accepted_values = (DIR_EGRESS, DIR_INGRESS)
     assert direction in accepted_values, "direction must be one of {!r}".format(accepted_values)
-    filename = "{}-{}.tc".format(iface.name, direction)
+    filename = "{}-{}.tc".format(iface.name, direction)  # FIXME: doesn't look good at all
     return TcCommandTarget(iface, filename)
