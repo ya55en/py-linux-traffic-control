@@ -9,6 +9,7 @@ import time
 from pyltc.util.cmdline import CommandLine
 
 
+# FIXME: Do we need these? Remove if not.
 OUTPUT_REGEXP = r'^\[.*?\]\s+\d+\.\d+\-\d+\.\d+\s+sec\s+\d[\.\d]+\s+\w+\s+(\d+)\s+bits/sec.*$'
 TIMEOUT = 60
 
@@ -114,7 +115,7 @@ class TCPNetPerfTest(NetPerfTest):
     """Wraps the iperf server-client functionallity for tcp."""
 
     def __init__(self, sendrate, iperf_bin='iperf', ip='127.0.0.1', port=5001, duration=4):
-        ''' sendrate is only a dummy argument here, to conform to NetPerfTest interface '''
+        """``sendrate`` is only a dummy argument here, to conform to NetPerfTest interface."""
         super(TCPNetPerfTest, self).__init__('dummy', iperf_bin=iperf_bin, ip=ip, port=port, duration=duration)
 
     def run(self):
@@ -158,7 +159,7 @@ class ServerClientTest(unittest.TestCase):
         TCPClient(iperf_bin='iperf_bin4', ip='127.0.0.4', port=40400, duration=44)
         UDPClient('10mbit', iperf_bin='iperf_bin5', ip='127.0.0.5', port=50500, duration=55)
 
-    @unittest.skip("sould be removed/reworked")
+    @unittest.skip("sould be removed/reworked")  # TODO: rework or remove
     def test_simple(self): # seems unusable at this point
         server = Iperf3Server(iperf_bin='iperf', ip='127.0.0.1', port=40400)
         server.run("tcp")

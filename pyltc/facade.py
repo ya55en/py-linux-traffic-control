@@ -16,6 +16,7 @@ class TrafficControl(object):
         cls._iface_map = dict()
         Qdisc._major_counter = 1
         Filter._prio_counter = 1
+        Filter._handle_counter = 1
 
     @classmethod
     def get_iface(cls, ifname, target_factory=None):

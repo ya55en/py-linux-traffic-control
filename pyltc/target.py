@@ -37,7 +37,7 @@ class ITarget(ABC):
 
     @abstractmethod
     def clear(self):
-        """Builds an recipe for clearing the LTC chain."""
+        """Builds a recipe for clearing the LTC chain."""
 
     @abstractmethod
     def set_root_qdisc(self, name, **kw):
@@ -98,18 +98,15 @@ class ITarget(ABC):
         """
 
 
-class TcFileTarget(ITarget):
-    """
-    An ITarget (see ITarget docstrings) implementation that builds /sbin/tc
-    compatible commands and finally represents them as a multi-line string or
-    saves them into a file.
-    """
+class TcTarget(ITarget):
+    """A parent class for targets that build series of tc commands."""
 
     def __init__(self, iface, direction=DIR_EGRESS):
         """
         Initializes this target object.
-        :param iface: Interface - the interface this target is associated with
-        :param direction: string - a string representing flow direction
+
+        :param iface: ``Interface`` - the interface this target is associated with
+        :param direction: ``string`` - a string representing flow direction
                           (DIR_EGRESS or DIR_INGRESS)
         """
         self._iface = iface
@@ -120,12 +117,6 @@ class TcFileTarget(ITarget):
         root_name = 'ingress' if is_ingress else 'root'
         cmd = "tc qdisc del dev {} {}".format(self._iface.name, root_name)
         self._commands.append(cmd)
-
-    def configure(self, filename):
-        self._filename = filename
-
-    def set_root_qdisc(self, name, **kw):
-        return self.add_qdisc(name, None, **kw)
 
     def add_qdisc(self, name, parent, **kw):
         qdisc = Qdisc(name, parent, **kw)
@@ -138,6 +129,9 @@ class TcFileTarget(ITarget):
         cmd = "tc qdisc add dev {iface} {parent} handle {handle} {qdisc_repr}".format(**cmd_params)
         self._commands.append(cmd)
         return qdisc
+
+    def set_root_qdisc(self, name, **kw):
+        return self.add_qdisc(name, None, **kw)
 
     def add_class(self, name, parent, **kw):
         klass = QdiscClass(name, parent, **kw)
@@ -167,21 +161,39 @@ class TcFileTarget(ITarget):
         self._commands.append(cmd)
         return filter
 
+
+class TcFileTarget(TcTarget):
+    """
+    An ITarget (see :class:``ITarget``) implementation that builds /sbin/tc
+    compatible commands and finally represents them as a multi-line string or
+    saves them into a file.
+    """
+    def __init__(self, iface, direction=DIR_EGRESS):
+        super(TcFileTarget, self).__init__(iface, direction)
+        self._filename = None
+
+    def configure(self, filename):
+        self._filename = filename
+
     def install(self, verbose=False):
         result = '\n'.join(self._commands)
         if verbose:
             print(result)
+        assert self._filename, "filename NOT set"
         with open(self._filename, 'w') as fhl:
             fhl.write(result + '\n')
 
 
-class TcCommandTarget(TcFileTarget):
+class TcCommandTarget(TcTarget):
     """
     An ITarget (see ITarget docstrings) implementation that builds /sbin/tc
     compatible commands and finally executes them.
     """
     def __init__(self, iface, direction=DIR_EGRESS):
-        super(TcCommandTarget, self).__init__(iface, direction=direction)
+        super(TcCommandTarget, self).__init__(iface, direction)
+
+    def configure(self, *args, **kw):  # nothing to do
+        pass
 
     def _install(self, verbose=False):
         for idx, cmd_str in enumerate(self._commands):
