@@ -5,10 +5,35 @@ Unit tests for the PyLTC target module.
 
 import unittest
 
-from pyltc import DIR_INGRESS
+from pyltc import DIR_INGRESS, DIR_EGRESS
 from pyltc.device import Interface
 from pyltc.struct import Qdisc, QdiscClass
-from pyltc.target import TcFileTarget
+from pyltc.target import TcTarget, TcFileTarget
+
+
+class DummyTcTarget(TcTarget):
+    """A dummy subclass to allow for testing the abstract ``TcTarget`` class."""
+    def install(self):
+        pass
+
+
+class TestTcTarget(unittest.TestCase):
+
+    def test_creation_default_fails(self):
+        self.assertRaises(TypeError, DummyTcTarget)
+
+    def test_creation_iface(self):
+        iface = Interface('veth51')
+        target = DummyTcTarget(iface)
+        self.assertIs(iface, target._iface)
+        self.assertEqual(DIR_EGRESS, target._direction)
+        self.assertFalse(bool(target._commands))
+
+    def test_creation_iface_direction(self):
+        iface = Interface('veth52')
+        target = DummyTcTarget(iface, DIR_INGRESS)
+        self.assertIs(iface, target._iface)
+        self.assertEqual(DIR_INGRESS, target._direction)
 
 
 class TestTcFileTarget(unittest.TestCase):
@@ -16,13 +41,20 @@ class TestTcFileTarget(unittest.TestCase):
     def test_creation_default_fails(self):
         self.assertRaises(TypeError, TcFileTarget)
 
-    def test_creation_iface(self):
+    def test_configure_default_direction(self):
         target = TcFileTarget(Interface('veth11'))
+        target.configure()
         self.assertEqual('veth11-egress.tc', target._filename)
 
-    def test_creation_iface_direction(self):
+    def test_test_configure_direction_ingress(self):
         target = TcFileTarget(Interface('veth12'), DIR_INGRESS)
+        target.configure()
         self.assertEqual('veth12-ingress.tc', target._filename)
+
+    def test_configure_custom_filename(self):
+        target = TcFileTarget(Interface('veth12a'), DIR_INGRESS)
+        target.configure(filename='custom-filename.tc')
+        self.assertEqual('custom-filename.tc', target._filename)
 
     def test_clear(self):
         iface = Interface('veth13')

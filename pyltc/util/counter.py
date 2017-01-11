@@ -27,7 +27,7 @@ class Counter(object):
             return True
         return isinstance(sequence, collections.Sequence)
 
-    def __init__(self, start=0, incr=1, fmt=None, skip=None):
+    def __init__(self, start=0, incr=1, end=None, fmt=None, skip=None):
         """
         Initializer.
 
@@ -44,6 +44,7 @@ class Counter(object):
                     "expected int or sequence but got {}".format(type(skip).__name__)
         self._start = start
         self._incr = incr
+        self._end = end
         self._fmt = fmt
         self._skip = self._arg2skipset(skip) if skip else set()
         self._current = start - incr
@@ -61,12 +62,24 @@ class Counter(object):
             return
         raise TypeError("Expected int or sequence but got {}".format(type(values).__name__))
 
+    def value(self):
+        """Returns the current count value without changing the state. The value
+        is formatted as ``fmt`` init argument specifies, if provided at creation."""
+        if self._fmt:
+            return self._fmt.format(self._current)
+        return self._current
+
     def next(self):
-        """Returns the next count value."""
+        """Returns the next count value. The value is formatted as ``fmt`` init
+        argument specifies, if provided at creation."""
         self._current += self._incr
+        if self._end is not None and self._current == self._end:
+            raise StopIteration
         while self._current in self._skip:
             self._current += self._incr
-        res = self._current
-        if self._fmt:
-            res = self._fmt.format(res)
-        return res
+        return self.value()
+
+    def __iter__(self):
+        return self
+
+    __next__ = next

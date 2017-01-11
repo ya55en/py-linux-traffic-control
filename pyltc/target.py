@@ -107,16 +107,19 @@ class TcTarget(ITarget):
 
         :param iface: ``Interface`` - the interface this target is associated with
         :param direction: ``string`` - a string representing flow direction
-                          (DIR_EGRESS or DIR_INGRESS)
+                                       (DIR_EGRESS or DIR_INGRESS)
         """
         self._iface = iface
-        self._filename = "{}-{}.tc".format(iface.name, direction)
+        self._direction = direction
         self._commands = list()
 
     def clear(self, is_ingress=False):
         root_name = 'ingress' if is_ingress else 'root'
         cmd = "tc qdisc del dev {} {}".format(self._iface.name, root_name)
         self._commands.append(cmd)
+
+    def configure(self, *args, **kw):
+        """The default configure() behavior of TC target hierarchy is to do nothing."""
 
     def add_qdisc(self, name, parent, **kw):
         qdisc = Qdisc(name, parent, **kw)
@@ -164,7 +167,7 @@ class TcTarget(ITarget):
 
 class TcFileTarget(TcTarget):
     """
-    An ITarget (see :class:``ITarget``) implementation that builds /sbin/tc
+    An ``ITarget`` (see :class:``ITarget``) implementation that builds /sbin/tc
     compatible commands and finally represents them as a multi-line string or
     saves them into a file.
     """
@@ -172,16 +175,18 @@ class TcFileTarget(TcTarget):
         super(TcFileTarget, self).__init__(iface, direction)
         self._filename = None
 
-    def configure(self, filename):
+    def configure(self, filename=None):
+        if not filename:
+            filename = "{}-{}.tc".format(self._iface.name, self._direction)
         self._filename = filename
 
     def install(self, verbose=False):
         result = '\n'.join(self._commands)
         if verbose:
             print(result)
-        assert self._filename, "filename NOT set"
-        with open(self._filename, 'w') as fhl:
-            fhl.write(result + '\n')
+        if self._filename:
+            with open(self._filename, 'w') as fhl:
+                fhl.write(result + '\n')
 
 
 class TcCommandTarget(TcTarget):
