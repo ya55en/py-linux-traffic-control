@@ -11,7 +11,7 @@ import sys
 from os.path import abspath, normpath, dirname, exists, join as pjoin
 
 REPO_ROOT = normpath(abspath(pjoin(dirname(__file__), "..", "..")))
-print(REPO_ROOT)
+#print(REPO_ROOT)
 if not REPO_ROOT in sys.path:
     sys.path.append(REPO_ROOT)
 
