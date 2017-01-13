@@ -83,6 +83,22 @@ upload tcp:dport:20000-30000:222kbit:2%
         expected = ['[section-1]', 'download tcp:dport:8000-8099:111kbit:1%', 'upload tcp:dport:20000-30000:222kbit:2% tcp:dport:8000-8099:333bit tcp:dport:8000-8099:444kbit:4%']
         self.assertEqual(expected, lines)
 
+    def test_preparse_2(self):
+        input_str = """\
+[section-1]
+download tcp:dport:2000-2002:111kbit:1%
+upload
+  ; asdasdasd
+  tcp:dport:3000:333bit
+"""
+        buff = io.StringIO(input_str)
+        conf = ConfigParser(buff)
+        lines = list()
+        for line in conf._preparse():
+            lines.append(line)
+        expected = ['[section-1]', 'download tcp:dport:2000-2002:111kbit:1%', 'upload tcp:dport:3000:333bit']
+        self.assertEqual(expected, lines)
+
     def test_preparse_raises(self):
         input_str = """\
   [section-1]

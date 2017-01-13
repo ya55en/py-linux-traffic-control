@@ -79,6 +79,9 @@ class ConfigParser(object):
     def _preparse(self):
         current_line = 'init'
         for line in self._strip_comments():
+            #print('@ "' + line + '"')
+            if not line.strip():
+                continue
             if line.startswith(" "):  # FIXME: support also \t
                 if current_line == 'init':
                     raise RuntimeError("Invalid configuration file.")
@@ -105,12 +108,13 @@ class ConfigParser(object):
                 raise ConfigSyntaxError("malformed section header in line %r", line)
             else:
                 if section is None:
-                    raise ConfigSyntaxError("options wihtout section in line %r", line)
+                    raise ConfigSyntaxError("options without section in line {!r}".format(line))
                 tokens = line.split()
                 tokens[0] = "--" + tokens[0]
                 section.extend(tokens)
 
         for line in self._preparse():
+            #print(line)
             process_line(line)
         self._sections = sections
         return self

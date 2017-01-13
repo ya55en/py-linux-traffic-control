@@ -23,25 +23,25 @@ modules.
 
 Getting the app version::
 
- # ./ltc.py -V  # note the capital 'V', lowercase means 'verbose'
+ $ sudo ./ltc.py -V  # note the capital 'V', lowercase means 'verbose'
 
 Clearing the default lo interface::
 
- # ./ltc.py tc -c
+ $ sudo ./ltc.py tc -c
 
 Clearing the eth0 interface, with verbose output::
 
- # ./ltc.py tc --clear --interface eth0 -v
+ $ sudo ./ltc.py tc --clear --interface eth0 -v
 
 Setting up some upload classes (dport and sport)::
 
- # ./ltc.py tc -c -v -u tcp:dport:6000-6080:512kbit
- # ./ltc.py tc -c -v -i eth0 -u tcp:dport:6000-6080:512kbit udp:dport:5000-5080:2mbit:3%
- # ./ltc.py tc -c -v -i eth0 -u tcp:dport:6000-6080:512kbit udp:dport:5000-5080:2mbit:3% tcp:sport:2000-2080:256kbit udp:sport:3000-3080:1mbit:3%
+ $ sudo ./ltc.py tc -c -v -u tcp:dport:6000-6080:512kbit
+ $ sudo ./ltc.py tc -c -v -i eth0 -u tcp:dport:6000-6080:512kbit udp:dport:5000-5080:2mbit:3%
+ $ sudo ./ltc.py tc -c -v -i eth0 -u tcp:dport:6000-6080:512kbit udp:dport:5000-5080:2mbit:3% tcp:sport:2000-2080:256kbit udp:sport:3000-3080:1mbit:3%
 
 Setting up some disciplines as defined in 4g-sym profile of a default config file::
 
- # ./ltc.py profile 4g-sym
+ $ sudo ./ltc.py profile 4g-sym
 
 Default config file locations are defined in the module's CONFIG_PATHS constant
 for now (currently being set to ('./pyltc.profiles', '/etc/pyltc.profiles').
@@ -49,7 +49,7 @@ for now (currently being set to ('./pyltc.profiles', '/etc/pyltc.profiles').
 
 Setting up some disciplines as defined in 3g-sym profile of the given config file::
 
- # ./ltc.py profile 3g-sym -c /path/to/config.conf
+ $ sudo ./ltc.py profile 3g-sym -c /path/to/config.conf
 
 
 Ingress Traffic Control
@@ -57,23 +57,23 @@ Ingress Traffic Control
 
 Sample command for setting up download (ingress) traffic control creating a new ifb device::
 
- # ./ltc.py tc -cvi eth0 --download tcp:dport:5000-5002:512kbit udp:dport:4000-4002:256kbit
+ $ sudo ./ltc.py tc -cvi eth0 --download tcp:dport:5000-5002:512kbit udp:dport:4000-4002:256kbit
 
 The tool will create a new ifb device if none is found, or use the device with the highest
 number if at least one is found.
 
 If you want to use a specific ifb device, make sure you first create it with::
 
- # modprobe ifb numifbs=0
- # ip link set dev ifbX up  # substitute X with the first not-yet-existing ifb device number
+ $ sudo modprobe ifb numifbs=0
+ $ sudo ip link set dev ifbX up  # substitute X with the first not-yet-existing ifb device number
 
-and then give it to ltc.py as a value to the *--ingress* switch::
+and then give it to ltc.py as a value to the *--ifbdevice* option::
 
- # ./ltc.py tc -cvi eth0 --ifbdevice ifb0 --download tcp:dport:8080-8088:256kbit:7%
+ $ sudo ./ltc.py tc -cvi eth0 --ifbdevice ifb0 --download tcp:dport:8080-8088:256kbit:7%
 
 Seting up both upload (egress) and download (ingress) traffic control is now possible, e.g.::
 
- # ./ltc.py tc -cvi eth0 --download tcp:dport:8080-8088:256kbit:7% --upload tcp:sport:20000-49999:256kbit:7%
+ $ sudo ./ltc.py tc -cvi eth0 --download tcp:dport:8080-8088:256kbit:7% --upload tcp:sport:20000-49999:256kbit:7%
 
 Comments in profile config files are denoted by semicolon ';' or hash sign '#'.
 
@@ -83,15 +83,16 @@ Profile configuration files
 Sample profile config file content::
 
  ; Simulating outbound 4G network confitions
- [4g-sym]
+ [4g-sym-out]
  clear
- iface eth0 ; the primary interface
+ interface eth0 ; the primary interface
  upload tcp:dport:6000-6999:512kbit
 
  ; Simulating inbound 4G network confitions
- [4g-sym]
+ [4g-sym-in]
  clear
- iface eth0 ; the primary interface
+ verbose
+ interface eth0 ; the primary interface
  download
     ; !IMPORTANT: Note the indent of the two class definitions!
     tcp:dport:6000-6999:2mbit
@@ -100,7 +101,7 @@ Sample profile config file content::
  # Simulating outbound 3G network confitions
  [3g-sym]
  clear
- iface eth0  # the primary interface
+ interface eth0  # the primary interface
  upload tcp:dport:8000-8080:96kbit
  download
    tcp:dport:8000-8080:96kbit
@@ -126,20 +127,32 @@ On debian-based distros installing it would look like::
 How to run
 **********
 
-To run the current test suite, root start it from the project root with::
+Simulation Test Suite
+*********************
+To run the current simulation test suite, start it from the project root with::
+
+$ sudo python3 tests/integration/sim_tests.py
+
+The simulation suite dosen't actually run any tc commands, but it makes sure that, in theory,  everything works.
+
+Such testing is not nearly as reliable as practical live tests (for obvious reasons), but it does cover practically all of the functionality and it runs in less than a second. This makes it a pretty convenient way to quickly test small changes
+
+Live Test Suite
+***************
+
+To run the current live test suite, start it from the project root with::
 
 $ sudo python3 tests/integration/live_tests.py
 
 The suite will execute a series of iperf-based measurements. The overall time is about 6-8 min.
-
 
 This is a first iteration for functional testing, improvements will be needed for sure.
 This however will help keep the tool in good shape!
 
 Important TODOs:
 
-- Support sclass setups. Currently iperf works in a way that the server always 'downloads'
-  and thus only dclass shaping is applicable.
+- Support source port setups. Currently iperf works in a way that the server always 'downloads'
+  and thus only tests destination port shaping.
 
 - Support ingress and egress shaping in the same test scenario.
 
