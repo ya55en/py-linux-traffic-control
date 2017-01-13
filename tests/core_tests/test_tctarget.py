@@ -42,7 +42,7 @@ class TestTcTarget(unittest.TestCase):
         self.assertRaises(TypeError, DummyTcTarget, 'foo')
 
     def test_creation_w_ifname_direction_ok(self):
-        target = DummyTcTarget('bazz0', DIR_EGRESS)
+        target = DummyTcTarget(NetDevice('bazz0'), DIR_EGRESS)
         # check that configure() default is called:
         self.assertIsNotNone(target._verbose)
         self.assertFalse(target._verbose)
@@ -52,46 +52,46 @@ class TestTcTarget(unittest.TestCase):
         DummyTcTarget(dev, DIR_EGRESS)
 
     def test_clear_on_egress(self):
-        target = DummyTcTarget('bazz0', DIR_EGRESS)
+        target = DummyTcTarget(NetDevice('bazz0'), DIR_EGRESS)
         target.clear()
         expected = ['tc qdisc del dev bazz0 root']
         self.assertEqual(expected, target._commands)
 
     def test_clear_on_ingress(self):
-        target = DummyTcTarget('bazz0', DIR_INGRESS)
+        target = DummyTcTarget(NetDevice('bazz0'), DIR_INGRESS)
         target.clear()
         expected = ['tc qdisc del dev bazz0 ingress']
         self.assertEqual(expected, target._commands)
 
     def test_configure(self):
-        target = DummyTcTarget('bazz0', DIR_INGRESS)
+        target = DummyTcTarget(NetDevice('bazz0'), DIR_INGRESS)
         target.configure(verbose=True)
         self.assertTrue(target._verbose)
 
     def test_add_qdisc(self):
         Qdisc.init()  # reset the qdisc major counter
-        target = DummyTcTarget('bar1', DIR_EGRESS)
+        target = DummyTcTarget(NetDevice('bar1'), DIR_EGRESS)
         target.add_qdisc('htb', None, rate='111kbit')
         expected = ['tc qdisc add dev bar1 root handle 1:0 htb rate 111kbit']
         self.assertEqual(expected, target._commands)
 
     def test_set_root_qdisc_egress(self):
         Qdisc.init()  # reset the qdisc major counter
-        target = DummyTcTarget('bar2', DIR_EGRESS)
+        target = DummyTcTarget(NetDevice('bar2'), DIR_EGRESS)
         target.set_root_qdisc('htb', rate='222kbit')
         expected = ['tc qdisc add dev bar2 root handle 1:0 htb rate 222kbit']
         self.assertEqual(expected, target._commands)
 
     def test_set_root_qdisc_ingress(self):
         Qdisc.init()  # reset the qdisc major counter
-        target = DummyTcTarget('bar3', DIR_INGRESS)
+        target = DummyTcTarget(NetDevice('bar3'), DIR_INGRESS)
         target.set_root_qdisc('htb', rate='333kbit')
         expected = ['tc qdisc add dev bar3 ingress handle 1:0 htb rate 333kbit']
         self.assertEqual(expected, target._commands)
 
     def test_add_class(self):
         Qdisc.init()  # reset the qdisc major counter
-        target = DummyTcTarget('bar4', DIR_EGRESS)
+        target = DummyTcTarget(NetDevice('bar4'), DIR_EGRESS)
         qdisc = Qdisc('htb', None, default=99)
         target.add_class('htb', qdisc, rate='444kbit')
         expected = ['tc class add dev bar4 parent 1:0 classid 1:1 htb rate 444kbit']
@@ -99,7 +99,7 @@ class TestTcTarget(unittest.TestCase):
 
     def test_add_filter(self):
         Qdisc.init()  # reset the qdisc major counter
-        target = DummyTcTarget('bar5', DIR_EGRESS)
+        target = DummyTcTarget(NetDevice('bar5'), DIR_EGRESS)
         qdisc = Qdisc('htb', None, default=99)
         qclass = QdiscClass('htb', qdisc, rate='555kbit')
         target.add_filter('u32', qdisc, 'ip dport 5001 0xffff', qclass, prio=9)
@@ -114,23 +114,23 @@ class TestTcFileTarget(unittest.TestCase):
         Qdisc.init()
 
     def test_creation_ok(self):
-        target = TcFileTarget('bar11', DIR_EGRESS)
+        target = TcFileTarget(NetDevice('bar11'), DIR_EGRESS)
         self.assertIsNone(target._filename)
 
     def test_configure_default(self):
-        target = TcFileTarget('bar22', DIR_EGRESS)
+        target = TcFileTarget(NetDevice('bar22'), DIR_EGRESS)
         target.configure()
         self.assertIsNotNone(target._filename)
 
     def test_configure_custom(self):
-        target = TcFileTarget('bar33', DIR_EGRESS)
+        target = TcFileTarget(NetDevice('bar33'), DIR_EGRESS)
         target.configure(filename='mysamplefilename.tc')
         self.assertEqual('mysamplefilename.tc', target._filename)
 
     @mock.patch('pyltc.core.tctarget.open')
     @mock.patch('pyltc.core.tctarget.print')
     def test_marshal_when_not_configured(self, fake_print, fake_open):
-        target = TcFileTarget('bar44', DIR_EGRESS)
+        target = TcFileTarget(NetDevice('bar44'), DIR_EGRESS)
         target.set_root_qdisc('htb', default=144)
         target.marshal()
         fake_print.assert_not_called
@@ -140,7 +140,7 @@ class TestTcFileTarget(unittest.TestCase):
     @mock.patch('pyltc.core.tctarget.print')
     def test_marshal_when_configured(self, fake_print, fake_open):
         fake_open.return_value = buff = io.StringIO()
-        target = TcFileTarget('bar55', DIR_EGRESS)
+        target = TcFileTarget(NetDevice('bar55'), DIR_EGRESS)
         timestamp = time.time()
         target.configure(verbose=True, filename='/tmp/tempfile-{}'.format(timestamp))
         target.set_root_qdisc('htb', default=155)
@@ -158,11 +158,11 @@ class TestTcCommandTarget(unittest.TestCase):
         Qdisc.init()
 
     def test_creation_proper(self):
-        TcCommandTarget('foo11', DIR_EGRESS)
+        TcCommandTarget(NetDevice('foo11'), DIR_EGRESS)
 
     @mock.patch('pyltc.core.tctarget.CommandLine')
     def test_marshal(self, fake_command_line):
-        target = TcCommandTarget('foo12', DIR_EGRESS)
+        target = TcCommandTarget(NetDevice('foo12'), DIR_EGRESS)
         target.clear()
         rootqd = target.set_root_qdisc('htb')
         target.add_class('htb', rootqd, rate='512kbit', ceil='512kbit')

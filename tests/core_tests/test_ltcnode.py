@@ -2,6 +2,7 @@
 Unit tests for the ltcnode classes.
 
 """
+
 import unittest
 from pyltc.core.ltcnode import Qdisc, QdiscClass, Filter
 

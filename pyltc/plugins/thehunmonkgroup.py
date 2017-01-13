@@ -4,15 +4,21 @@ Chad Phillips' (thehunmonkgroup) network simulation plugin.
 Note that this NOT yet converted to an actual plugin but rather imported
 as a Python module currently.
 
-TODO: introduce plugin functionality and convert this to the first plugin ;)
+TODO: introduce plugin functionality and convert this to be the first plugin ;)
 
 """
 
-from pyltc.parseargs import IllegalArguments
-from pyltc.target import ITarget
-from pyltc.plugins.util import parse_branch
-from parser import ParserError
+import os
+import sys
+import argparse
 
+from pyltc.conf import CONFIG_PATHS, __build__, __version__
+from parser import ParserError
+from pyltc.core.facade import TrafficControl
+from pyltc.util.cmdline import CommandLine
+from pyltc.util.confparser import ConfigParser
+from pyltc.plugins.util import parse_branch
+from pyltc.core.netdevice import NetDevice
 
 #: netem (the qdisc that simulates special network conditions) works for a
 # default of 1000 packets. This was a source of problems and the workaround
@@ -22,47 +28,149 @@ from parser import ParserError
 NETEM_LIMIT = 1000000000
 
 
-def shape_ports(target, direction, range, rate, loss=None):
-    """
-    The only recipe that we support currently. Creates a LTC (egress) chain
-    that shapes the traffic for a range of tcp ports into a given rate using
-    htb. If loss is provided, adds simulated jitter using netem.
-    """
-    rootqd = target.set_root_qdisc('htb')
-    htbclass = target.add_class('htb', parent=rootqd, rate=rate)
-    if loss:
-        target.add_qdisc('netem', parent=htbclass, loss=loss, limit=NETEM_LIMIT) # e.g. 'loss random 7%'
-    assert range.count("-") == 1, "illegal range: {!r}".format(range)   # we do not yet support complex ranges
-    start, end = (int(elm) for elm in range.split("-"))
-    accepted_values = ('dport', 'sport')
-    assert direction in accepted_values, \
-            "direction ({!r}) must be one of {!r}".format(direction, accepted_values)
-    offset = 0 if direction == 'sport' else 2
-    cond = '"cmp(u16 at {} layer transport gt {}) and cmp(u16 at {} layer transport lt {})"' \
-            .format(offset, start - 1, offset, end + 1)
-    target.add_filter('basic', rootqd, cond=cond, flownode=htbclass)
+class IllegalArguments(Exception):
+    """Represents an error in command line or profile setup."""
 
 
-def threefold(target, range, rate, loss=None):  # TODO: Unused?
-    """HTB-based hirarchical system."""
-    rootqd = target.set_root_qdisc('htb', default=1)
-    default_class = target.add_class('htb', parent=rootqd)
-    default_qdisc = target.add_qdisc('pfifo', parent=default_class, limit=4096)
-    shaped_class = target.add_class('htb', parent=rootqd, rate=rate)
-    assert range.count("-") == 1, "illegal range: {!r}".format(range)   # we do not yet support complex ranges
-    start, end = (int(elm) for elm in range.split("-"))
-    offset = 2 # dpoort
-    cond = '"cmp(u16 at {} layer transport gt {}) and cmp(u16 at {} layer transport lt {})"' \
-            .format(offset, start - 1, offset, end + 1)
-    target.add_filter('basic', rootqd, cond=cond, flownode=shaped_class)
+def determine_ini_conf_file():
+    """Looks for (in preconfigured locations) and returns a profile config file
+       if one is found or None if none has been found."""
+    for path in CONFIG_PATHS:
+        if os.path.exists(path):
+            return os.path.abspath(path)
+    return None  # explicitly
 
 
-def shape_dports(chain, range, rate, loss=None):  # TODO: Unused?
-    return chain.shape_ports('dport', range, rate, loss)
+def parse_ini_file(profile, conf_file, verbose):
+    """Parses given input file and returns a list of command line arguments
+       equivalent to the settings of that profile."""
+    if not conf_file:
+        conf_file = determine_ini_conf_file()
+    if not conf_file:  # FIXME: revisit this; raising an exception seems better
+        return ['no_conf_file']
+    if verbose:
+        print('Using config file {!r}'.format(conf_file))
+
+    conf_parser = ConfigParser(conf_file)
+    conf_parser.parse()
+    try:
+        new_args = conf_parser.section(profile)
+    except KeyError:  # FIXME: revisit this; raising an exception seems better
+        return ['no_such_profile', '{!r}'.format(profile)]
+
+    new_args.insert(0, 'tc')
+    if verbose:
+        print("Profile args:", new_args)
+    return new_args
 
 
-def shape_sports(chain, range, rate, loss=None):  # TODO: Unused?
-    return chain.shape_ports('sport', range, rate, loss)
+def handle_ingress_arg(ingress_arg, verbose_arg, parser):
+    """Handles the --ingress command line argument."""
+    if not ingress_arg:
+        return None
+    available_ifs = os.listdir('/sys/class/net/')
+    available_ifbs = sorted((iface for iface in available_ifs if iface.startswith('ifb')))
+    if ingress_arg in available_ifbs:
+        return ingress_arg  # using an existing and preconfigured ifb device
+    if ingress_arg != 'setup':
+        parser.error(
+            "ifb device not found: {!r}. Leave --ingress switch empty to set up a new one.".format(ingress_arg))
+        raise RuntimeError('UNREACHABLE')
+
+    # we need to set up a new device
+    if not available_ifbs:
+        CommandLine('modprobe ifb numifbs=0', verbose=verbose_arg, sudo=True).execute()
+        CommandLine('ip link add ifb0 type ifb', verbose=verbose_arg, sudo=True).execute()
+        CommandLine('ip link set dev ifb0 up', verbose=verbose_arg, sudo=True).execute()
+        available_ifs = os.listdir('/sys/class/net/')
+        available_ifbs = sorted((iface for iface in available_ifs if iface.startswith('ifb')))
+        assert len(available_ifbs) == 1, "expected available_ifbs to have single element, got {!r}" \
+            .format(available_ifbs)
+
+    ifbnum = [int(el.lstrip('ifb')) for el in available_ifbs][-1]  # + 1
+    ifbdev = "ifb{}".format(ifbnum)
+    CommandLine('ip link set dev {} up'.format(ifbdev), verbose=verbose_arg, sudo=True).execute()
+    return ifbdev
+
+
+def handle_version_arg(argv):
+    """Handles the --version command line argument."""
+
+    def compose_version():
+        name = sys.argv[0].split(os.sep)[-1]  # TODO: make this a constant
+        version_str = ".".join(map(str, __version__))
+        return "{} verison {} (build {})".format(name, version_str, __build__)
+
+    if '-V' in argv or '--version' in argv:
+        print(compose_version())
+        sys.exit(0)
+
+
+def parse_args(argv, old_args_dict=None):
+    """Parses given list of command line arguments using `argparse.ArgumentParser`
+       and returns the parsed namespace."""
+    old_args_dict = old_args_dict if old_args_dict else dict()
+    parser = argparse.ArgumentParser(epilog="Use '%(prog)s subcommand -h/--help' to see the specific options.")
+    if not argv:
+        parser.error('Insufficient arguments. Try -h/--help.')
+    if 'no_conf_file' in argv:
+        parser.error('Cannot find configuration file - looked up in {}.'.format(CONFIG_PATHS))
+    if 'no_such_profile' in argv:
+        parser.error('No such profile found: {}'.format(argv[1]))
+    parser.add_argument("-V", "--version", action='store_true', help="show program version and exit")
+
+    subparsers = parser.add_subparsers(dest="subparser")
+    parser_profile = subparsers.add_parser("profile", help="profile to be used")
+    parser_profile.add_argument("profile_name", help="profile name from the config file")
+    parser_profile.add_argument("-v", "--verbose", action='store_true', required=False, default=False,
+                                help="more verbose output (default: %(default)s)")
+    parser_profile.add_argument("-c", "--config", required=False, default=None,
+                                help="configuration file to read from."
+                                     " If not specified, default paths will be tried before giving up"
+                                     " (see module's CONFIG_PATHS).")
+
+    parser_cmd = subparsers.add_parser("tc", help="traffic control setup to be applied")
+    parser_cmd.add_argument("-v", "--verbose", action='store_true', required=False, default=False,
+                            help="more verbose output (default: %(default)s)")
+    parser_cmd.add_argument("-i", "--interface", required=False, default='lo',
+                            help="the network device name (default: %(default)s)")
+    parser_cmd.add_argument("-c", "--clear", action='store_true', required=False, default=False,
+                            help="issue a chain clearing clause before the actual recipe (default: %(default)s)")
+    parser_cmd.add_argument("-b", "--ifbdevice", nargs='?', const='setup', default=None,
+                            help="for download (ingress) control, specifies which ifb device to use."
+                                 " If not present, a new device will be set up and used. (default: %(default)s)")
+    parser_cmd.add_argument("-u", "--upload", default=None, nargs='+', type=str,
+                            metavar='PROTOCOL:PORTTYPE:RANGE:RATE:JITTER',
+                            help="define discipline classes for upload (egress) port range. Example:"
+                                 " tcp:dport:16000-24000:512kbit:5%%. PROTOCOL, PORTTYPE and RANGE are required."
+                                 " RATE and/or JITTER must be present. PROTOCOL is one of 'tcp', 'udp'."
+                                 " PORTTYPE is one of 'sport', 'dport'. RANGE is a dash-delimited range of ports"
+                                 " MINPORT-MAXPORT (inclusive).")
+    parser_cmd.add_argument("-d", "--download", default=None, nargs='+', type=str,
+                            metavar='PROTOCOL:PORTTYPE:RANGE:RATE:JITTER',
+                            help="define discipline class(es) for download (ingress) port range(s). Example:"
+                                 " tcp:dport:16000-24000:512kbit:5%%. PROTOCOL, PORTTYPE and RANGE are required."
+                                 " RATE and/or JITTER must be present. PROTOCOL is one of 'tcp', 'udp'."
+                                 " PORTTYPE is one of 'sport', 'dport'. RANGE is a dash-delimited range of ports"
+                                 " MINPORT-MAXPORT (inclusive).")
+
+    args = parser.parse_args(argv)
+    args.verbose = args.verbose or old_args_dict.get('verbose', False)
+    args.clearonly_mode = args.clear and not (args.upload or args.download)
+
+    if not args.subparser:
+        parser.error('No action requested.')
+
+    if args.subparser == 'tc':
+        if not (args.upload or args.download or args.clear):
+            parser.error('No action requested: add at least one of --upload, --download, --clear.')
+
+        if not args.ifbdevice and (args.download or args.clearonly_mode):
+            args.ifbdevice = 'setup'
+        args.ifbdevice = handle_ingress_arg(args.ifbdevice, args.verbose, parser)
+    else:
+        args.ifbdevice = None
+    return args
 
 
 def build_basics(target, tcp_all_rate, udp_all_rate):
@@ -82,8 +190,7 @@ def build_basics(target, tcp_all_rate, udp_all_rate):
     return tcp_qdisc, udp_qdisc
 
 
-def build_single_port_filter(target, parent, flownode, port, offset):
-    port_dir = 'dport' if offset == 2 else 'sport'
+def build_single_port_filter(target, parent, flownode, port, port_dir):
     target.add_filter('u32', parent, 'ip {} {} 0xffff'.format(port_dir, port), flownode)
 
 
@@ -95,44 +202,50 @@ def parse_branch_list(args_list):
     return branches
 
 
-def build_tree(target, tcphook, udphook, args_list, offset, is_ingress=False):
+def build_tree(target, tcphook, udphook, args_list):
     branches = parse_branch_list(args_list)
     for branch in branches:
         if branch['range'] == 'all':
             continue
+
+        if branch['porttype'] == 'sport':
+            offset = 0
+        elif branch['porttype'] == 'dport':
+            offset = 2
+        else:
+            raise RuntimeError('UNREACHABLE!')
 
         if branch['protocol'] == 'tcp':
             hook = tcphook
         elif branch['protocol'] == 'udp':
             hook = udphook
         else:
-            raise IllegalArguments("protocol not specified (tcp or udp?)")  # FIXME: revisit this
-            #raise RuntimeError('UNREACHABLE')
+            raise RuntimeError('UNREACHABLE')
 
         # class(htb) - shaping
         rate = branch['rate'] if branch['rate'] else '15gbit'  # TODO: move this to a constant
         htb_class = target.add_class('htb', hook, rate=rate)
         # filter(basic) - port
         if '-' not in branch['range']:
-            build_single_port_filter(target, hook, htb_class, branch['range'], offset)  # FIXME: use better means to communicate dport/sport case
+            build_single_port_filter(target, hook, htb_class, branch['range'], branch['porttype'])
         else:
             start, end = (int(elm) for elm in branch['range'].split("-"))
             cond_port_range = '"cmp(u16 at {} layer transport gt {}) and cmp(u16 at {} layer transport lt {})"' \
-                         .format(offset, start - 1, offset, end + 1)
+                .format(offset, start - 1, offset, end + 1)
             basic_filter = target.add_filter('basic', hook, cond=cond_port_range, flownode=htb_class)
         # qdisc(netem) - loss
         if branch['loss']:
             netem_qdisc = target.add_qdisc('netem', parent=htb_class, loss=branch['loss'], limit=NETEM_LIMIT)
 
 
-def determine_all_rates(dclasses, sclasses):
-    tcp_all_rate = False # serves as flag too
-    udp_all_rate = False # serves as flag too
-    for classes in (dclasses, sclasses):
-        if not classes:
+def determine_all_rates(upload, download):
+    tcp_all_rate = False  # serves as flag too
+    udp_all_rate = False  # serves as flag too
+    for groups in (upload, download):
+        if not groups:
             continue
-        for some_class in classes:
-            parsed = parse_branch(some_class)
+        for group in groups:
+            parsed = parse_branch(group)
             if parsed['range'] == 'all' and parsed['protocol'] == 'tcp':
                 if tcp_all_rate:
                     raise ParserError("More than one 'all' range detected for the same protocol(tcp).")
@@ -143,29 +256,45 @@ def determine_all_rates(dclasses, sclasses):
                 udp_all_rate = parsed['rate']
     return tcp_all_rate, udp_all_rate
 
-ITarget.shape_ports = shape_ports
-ITarget.shape_dports = shape_dports
-ITarget.shape_sports = shape_sports
 
+def plugin_main(argv, target_factory):
+    if not argv:
+        argv = sys.argv[1:]
+    handle_version_arg(argv)
+    args = parse_args(argv)
+    if args.verbose:
+        print("Args:", str(args).lstrip("Namespace"))
 
-def plugin_main(args, iface, ifbdev):
-    chain = ifbdev.egress if args.ingress else iface.egress
-    if args.clear:
-        if args.ingress:
-            iface.ingress.clear(is_ingress=True)
-        chain.clear()
-    if args.dclass or args.sclass:
-        if args.ingress:
-            cmd = 'tc qdisc add dev {} handle ffff: ingress'.format(iface.name)
-            chain._commands.append(cmd)
-            cmd = ("tc filter add dev {} parent ffff: protocol ip"
-                   + " u32 match u32 0 0 action mirred egress redirect dev {}").format(iface.name, ifbdev.name)
-            chain._commands.append(cmd)
-        tcp_all_rate, udp_all_rate = determine_all_rates(args.dclass, args.sclass)
-        tcp_hook, udp_hook = build_basics(chain, tcp_all_rate, udp_all_rate)
-    if args.dclass:
-        build_tree(chain, tcp_hook, udp_hook, args.dclass, offset=2, is_ingress=bool(args.ingress))
-    if args.sclass:
-        build_tree(chain, tcp_hook, udp_hook, args.sclass, offset=0, is_ingress=bool(args.ingress))
-    iface.ingress.install(verbose=args.verbose)
-    chain.install(verbose=args.verbose)
+    if 'profile_name' in args:
+        profile_args = parse_ini_file(args.profile_name, args.config, args.verbose)
+        old_args_dict = args.__dict__.copy()
+        args = parse_args(profile_args, old_args_dict)
+
+    iface = TrafficControl.get_iface(args.interface, target_factory)
+    ifbdev = NetDevice.new_instance(args.ifbdevice,
+                                    target_factory)  # returns a "Null" NetDevice object if args.ifbdevice is None
+    if args.upload:
+        if args.clear:
+            iface.egress.clear()
+        if not args.clearonly_mode:
+            tcp_all_rate, udp_all_rate = determine_all_rates(args.upload, args.download)
+            tcp_hook, udp_hook = build_basics(iface.egress, tcp_all_rate, udp_all_rate)
+            build_tree(iface.egress, tcp_hook, udp_hook, args.upload)
+
+        iface.egress.configure(verbose=args.verbose)
+        iface.egress.marshal()
+
+    if args.download:
+        if args.clear:
+            iface.ingress.clear()
+            ifbdev.egress.clear()
+        if not args.clearonly_mode:
+            iface.ingress.set_redirect(iface, ifbdev)
+            tcp_all_rate, udp_all_rate = determine_all_rates(args.upload, args.download)
+            tcp_hook, udp_hook = build_basics(ifbdev.egress, tcp_all_rate, udp_all_rate)
+            build_tree(ifbdev.egress, tcp_hook, udp_hook, args.download)
+
+        iface.ingress.configure(verbose=args.verbose)
+        iface.ingress.marshal()
+        ifbdev.egress.configure(verbose=args.verbose)
+        ifbdev.egress.marshal()

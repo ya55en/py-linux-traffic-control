@@ -2,9 +2,8 @@
 TODO: doc
 
 """
-from pyltc.core import ITarget, DIR_INGRESS
+from pyltc.core import ITarget, DIR_EGRESS, DIR_INGRESS
 from pyltc.core.ltcnode import Qdisc, QdiscClass, Filter
-from pyltc.core.netdevice import NetDevice
 from pyltc.util.cmdline import CommandLine, CommandFailed
 
 
@@ -27,7 +26,8 @@ class TcTarget(ITarget):
         return '{} {}'.format(ltcnode._name, kwargs)
 
     def __init__(self, iface, direction):
-        self._iface = iface if isinstance(iface, NetDevice) else NetDevice(iface)
+        assert iface.__class__.__name__ == 'NetDevice', "Expected type NetDevice but got " + type(iface).__name__
+        self._iface = iface
         self._direction = direction
         self._chain_name = 'ingress' if direction == DIR_INGRESS else 'root'
         self._commands = list()
@@ -96,6 +96,17 @@ class TcTarget(ITarget):
         self._commands.append(cmd)
         return filter
 
+    def set_redirect(self, pridev, ifbdev):
+        cmd1 = "tc qdisc add dev {pridev} handle ffff:0 ingress"
+        cmd2 = ("tc filter add dev {pridev} parent ffff:0 protocol ip u32 match u32 0 0 action mirred egress"
+                " redirect dev {ifbdev}")
+        args = {
+            'pridev': pridev.name,
+            'ifbdev': ifbdev.name,
+        }
+        self._commands.append(cmd1.format(**args))
+        self._commands.append(cmd2.format(**args))
+
     def marshal(self):
         for cmd in self._commands:
             print(cmd)
@@ -106,6 +117,7 @@ class TcFileTarget(TcTarget):
     and finally represents them as a multi-line string or saves them into a file.
     """
     def __init__(self, iface, direction):
+        # super(self.__class__, self).__init__(iface, direction)
         super(TcFileTarget, self).__init__(iface, direction)
         self._filename = None
 

@@ -11,17 +11,19 @@ import sys
 import shutil
 from os.path import abspath, normpath, dirname, exists, join as pjoin
 
+
 REPO_ROOT = normpath(abspath(pjoin(dirname(__file__), "..", "..")))
 if not REPO_ROOT in sys.path:
     sys.path.append(REPO_ROOT)
 
-from pyltc import DIR_EGRESS
+from pyltc.core import DIR_EGRESS
 from pyltc.main import pyltc_entry_point
 from pyltc.plugins.util import parse_branch
 from pyltc.util.rates import convert2bps
+from pyltc.util.counter import Counter
 from tests.util.base import LtcLiveTargetRun
 from tests.util.iperf_proc import TCPNetPerfTest
-from pyltc.target import TcTarget
+from pyltc.core.tctarget import TcTarget
 
 
 #: the standard duration (in sec.) for which the iperf client sends data to the iperf server
@@ -46,7 +48,7 @@ class TcRecordTarget(TcTarget):
     def configure(self, *args, **kw):
         pass
 
-    def install(self, verbose=False):
+    def marshal(self, verbose=False):
         pass
 
 
@@ -62,7 +64,7 @@ class TestPyLtcLive(unittest.TestCase):
     def setUpClass(cls):
         if cls.record_mode:
             print('--Record mode ON--')
-            cls._rec_count = 0
+            cls._rec_count = Counter(start=1)
             data_dir = pjoin(REPO_ROOT, "tmp", "testdata", "recorded")
             if exists(data_dir):
                 shutil.rmtree(data_dir)
@@ -73,7 +75,7 @@ class TestPyLtcLive(unittest.TestCase):
         else:
             print('--Record mode OFF--')
             pyltc_entry_point(['tc', '-i', 'lo', '-c', '-in'])
-            pyltc_entry_point(['tc', '-i', 'lo', '-c', '--dclass', 'tcp:15000:512kbit', '--dclass', 'tcp:16001-16005:1mbit'])
+            pyltc_entry_point(['tc', '-i', 'lo', '-c', '--upload', 'tcp:dport:15000:512kbit', 'tcp:dport:16001-16005:1mbit'])
             tcp_netperf = TCPNetPerfTest('dummy', host='127.0.0.1', port=DEFAULT_TEST_PORT, duration=DURATION)
             cls.tcp_free_rate = tcp_netperf.run()
 
@@ -106,8 +108,9 @@ class TestPyLtcLive(unittest.TestCase):
         assert tcp_free_rate or udp_free_rate
 
         arg_list = ['tc', '-i', 'lo', '-c']
+        arg_list.append('--upload')
         for case in cases:
-            arg_list.extend(('--dclass', case))
+            arg_list.append(case)
 
         if VERBOSITY:
             arg_list.append('-v')
@@ -117,6 +120,7 @@ class TestPyLtcLive(unittest.TestCase):
             assert ('tcp' in case and tcp_free_rate) or ('udp' in case and udp_free_rate), \
                     'case: {!r}, tcp_free_rate: {!r}, udp_free_rate: {!r}'.format(case, tcp_free_rate, udp_free_rate)
             free_rate = tcp_free_rate if 'tcp' in case else udp_free_rate
+            print('case: {}, free_rate: {}'.format(case, free_rate))
             branch = parse_branch(case)
             results = live_test.result[case]
             self._check_bandwidth(convert2bps(branch['rate']), results['left_in'], MAX_SHAPED_TOLERANCE)
@@ -126,14 +130,15 @@ class TestPyLtcLive(unittest.TestCase):
 
     def _do_record(self, cases):
         arg_list = ['tc', '-i', 'lo', '-c']
+        arg_list.append('--upload')
         for case in cases:
-            arg_list.extend(('--dclass', case))
+            arg_list.append(case)
         pyltc_entry_point(arg_list, self.tc_recording_target_factory)
         self._create_data_file(arg_list, self._targets)
 
     def _create_data_file(self, arg_list, targets):
-        self.__class__._rec_count += 1
-        fname = pjoin(self._data_dir, "testfile-{}.txt".format(self._rec_count))
+        #print(self._data_dir)
+        fname = pjoin(self._data_dir, "testfile-{}.txt".format(self._rec_count.next()))
         with open(fname, 'w') as fhl:
             fhl.write(" ".join(arg_list) + '\n\n')
             assert len(targets) == 2 and (bool(targets[0]._commands) != bool(targets[1]._commands)), "targets: {}".format(targets)
@@ -149,55 +154,55 @@ class TestPyLtcLive(unittest.TestCase):
 
     def test_simple_tcp(self):
         print('test_simple_tcp BEGIN')
-        cases = ['tcp:9100-9110:512kbit']
+        cases = ['tcp:dport:9100-9110:512kbit']
         self._do_test(cases)
         print('test_simple_tcp END')
 
     def test_single_port_tcp(self):
         print('test_single_port_tcp BEGIN')
-        cases = ['tcp:9200:3mbit']
+        cases = ['tcp:dport:9200:3mbit']
         self._do_test(cases)
         print('test_single_port_tcp END')
 
     def test_double_tcp(self):
         print('test_double_tcp BEGIN')
-        cases = ['tcp:9300:1mbit', 'tcp:9400-9410:512kbit']
+        cases = ['tcp:dport:9300:1mbit', 'tcp:dport:9400-9410:512kbit']
         self._do_test(cases)
         print('test_double_tcp END')
 
     def test_simple_udp(self):
         print('test_simple_udp BEGIN')
-        cases = ['udp:9500-9510:2mbit']
+        cases = ['udp:dport:9500-9510:2mbit']
         self._do_test(cases, udp_free_rate=10000000)
         print('test_simple_udp END')
 
     def test_single_port_udp(self):
         print('test_single_port_udp BEGIN')
-        cases = ['udp:9600:256kbit']
+        cases = ['udp:dport:9600:256kbit']
         self._do_test(cases, udp_free_rate=10000000)
         print('test_single_port_udp END')
 
     def test_double_udp(self):
         print('test_double_udp BEGIN')
-        cases = ['udp:9700:4mbit', 'udp:9800-9810:2mbit']
+        cases = ['udp:dport:9700:4mbit', 'udp:dport:9800-9810:2mbit']
         self._do_test(cases, udp_free_rate=10000000)
         print('test_double_udp END')
 
     def test_ingress_tcp(self):
         print('test_ingress_simple BEGIN')
-        cases = ['tcp:9900-9910:1mbit']
+        cases = ['tcp:dport:9900-9910:1mbit']
         self._do_test(cases)
         print('test_ingress_simple END')
 
-    def test_ingress_udp(self):
-        print('test_ingress_simple BEGIN')
-        cases = ['udp:10000-10010:2mbit']
-        self._do_test(cases, udp_free_rate=10000000)
-        print('test_ingress_simple END')
+#     def _test_ingress_udp(self):
+#         print('test_ingress_simple BEGIN')
+#         cases = ['udp:dport:10000-10010:2mbit']
+#         self._do_test(cases, udp_free_rate=10000000)
+#         print('test_ingress_simple END')
 
-    def test_ingress_complex(self):
+    def test_complex(self):
         print('test_ingress_complex BEGIN')
-        cases = ['tcp:10100:786kbit', 'udp:10200-10210:3mbit']
+        cases = ['tcp:dport:10100:786kbit', 'udp:dport:10200-10210:3mbit']
         self._do_test(cases, udp_free_rate=10000000)
 
         print('test_ingress_complex END')

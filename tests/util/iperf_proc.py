@@ -147,7 +147,7 @@ class UDPNetPerfTest(NetPerfTest):
 
 
 #________________________________________
-#  Test Section Below:
+#  Test Section Below    TODO: Make sure these are also executed on each build
 
 import unittest
 

@@ -3,23 +3,23 @@ Base test classes for PyLTC integration testing.
 
 """
 
-from pyltc import DIR_EGRESS
-from pyltc.parseargs import parse_args
-from pyltc.target import TcFileTarget, TcCommandTarget
+from pyltc.core import DIR_EGRESS
+from pyltc.plugins.thehunmonkgroup import parse_args
+from pyltc.core.tctarget import TcTarget, TcCommandTarget, TcFileTarget
 from pyltc.main import pyltc_entry_point
 from tests.util.iperf_proc import TCPNetPerfTest, UDPNetPerfTest
 from pyltc.plugins.util import parse_branch
 
 
-class TcTestTarget(TcFileTarget):
+class TcTestTarget(TcTarget):
     """A Target class that sends generated commands to caller
     instead of executing/writing in file. Used for testing purposes."""
 
-    def __init__(self, iface, callback, direction=DIR_EGRESS):
-        TcFileTarget.__init__(self, iface, direction=direction)
+    def __init__(self, iface, direction, callback):
+        super(TcTestTarget, self).__init__(iface, direction)
         self._callback = callback
 
-    def install(self, verbose=False):
+    def marshal(self, verbose=False):
         self._callback(self._commands)
 
 
@@ -30,13 +30,13 @@ class LtcSimulateTargetRun(object):
     def __init__(self, argv, full=False):
         self._argv = argv
         self._full = full
-        self._result = None
+        self._result = []
 
     def our_callback(self, result):
-        self._result = result
+        self._result = self._result + result
 
     def test_target_factory(self, iface, direction):
-        return TcTestTarget(iface, self.our_callback, direction)
+        return TcTestTarget(iface, direction, self.our_callback)
 
     def run(self):
         pyltc_entry_point(self._argv, self.test_target_factory)
@@ -84,11 +84,11 @@ class LtcLiveTargetRun(object):
         pyltc_entry_point(self._argv, self._target_factory)
         args = parse_args(orig_argv)
         result = {}
-        for dc in args.dclass:
-            dc_dict = parse_branch(dc)
-            klass = TCPNetPerfTest if dc_dict['protocol'] == 'tcp' else UDPNetPerfTest
-            bandwidth_dict = self._test_for_port_range(klass, dc_dict['range'], self._udp_sendrate)
-            result[dc] = bandwidth_dict
+        for group in args.upload:
+            group_dict = parse_branch(group)
+            klass = TCPNetPerfTest if group_dict['protocol'] == 'tcp' else UDPNetPerfTest
+            bandwidth_dict = self._test_for_port_range(klass, group_dict['range'], self._udp_sendrate)
+            result[group] = bandwidth_dict
 
         self._result = result
 

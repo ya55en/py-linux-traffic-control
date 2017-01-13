@@ -4,8 +4,11 @@ TODO: doc
 """
 import os
 from os.path import join as pjoin
+from unittest.mock import MagicMock
 
 from pyltc.util.cmdline import CommandLine
+from pyltc.core import DIR_EGRESS, DIR_INGRESS
+from pyltc.core.tfactory import default_target_factory
 
 
 class DeviceManager(object):
@@ -113,13 +116,46 @@ class NetDevice(object):
         DeviceManager.device_add(new_name)
         return cls(new_name)
 
-    def __init__(self, name):
+    def __init__(self, name, target_factory=None):
         assert isinstance(name, str)
         self._name = name
+        if not target_factory:
+            target_factory = default_target_factory
+        self._egress_chain = target_factory(self, DIR_EGRESS)
+        self._ingress_chain = target_factory(self, DIR_INGRESS)
+        self._ifbdev = None
+
+    @classmethod
+    def new_instance(cls, name, target_factory=None):
+        """
+        TODO: document
+        """
+        if name is None:
+            return MagicMock()
+        if target_factory is None:
+            target_factory = default_target_factory
+        return cls(name, target_factory)
 
     @property
     def name(self):
         return self._name
+
+#     def set_ingress_device(self, ifbdev):
+#         self._ingress_chain.set_redirect(self, ifbdev)
+#         self._ifbdev = ifbdev
+
+    @property
+    def egress(self):
+        return self._egress_chain
+
+    @property
+    def ingress(self):
+        """Returns the ingress chain builder for this interface.
+        :return: ITarget - the ingress chain target builder
+        """
+#         if self._ifbdev:
+#             return self._ifbdev.egress
+        return self._ingress_chain
 
     def exists(self):
         return DeviceManager.device_exists(self._name)
