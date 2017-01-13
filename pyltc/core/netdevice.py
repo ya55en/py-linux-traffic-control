@@ -40,7 +40,7 @@ class DeviceManager(object):
         """Sets down all module-related devices, then removes module from kernel."""
         for ifname in cls.all_iface_names(filter=name):
             cls.device_down(ifname)
-            cls.remove_module('dummy')
+            cls.remove_module(name)
 
     @classmethod
     def split_name(cls, name):
@@ -140,10 +140,6 @@ class NetDevice(object):
     def name(self):
         return self._name
 
-#     def set_ingress_device(self, ifbdev):
-#         self._ingress_chain.set_redirect(self, ifbdev)
-#         self._ifbdev = ifbdev
-
     @property
     def egress(self):
         return self._egress_chain
@@ -153,8 +149,6 @@ class NetDevice(object):
         """Returns the ingress chain builder for this interface.
         :return: ITarget - the ingress chain target builder
         """
-#         if self._ifbdev:
-#             return self._ifbdev.egress
         return self._ingress_chain
 
     def exists(self):

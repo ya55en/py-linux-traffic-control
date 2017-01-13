@@ -11,7 +11,7 @@ from unittest.mock import call
 from pyltc.core import DIR_EGRESS, DIR_INGRESS
 from pyltc.core.ltcnode import Qdisc, QdiscClass, Filter
 from pyltc.core.netdevice import NetDevice
-from pyltc.core.tctarget import TcTarget, TcFileTarget, TcCommandTarget
+from pyltc.core.target import TcTarget, TcFileTarget, TcCommandTarget
 
 
 class DummyTcTarget(TcTarget):
@@ -127,8 +127,8 @@ class TestTcFileTarget(unittest.TestCase):
         target.configure(filename='mysamplefilename.tc')
         self.assertEqual('mysamplefilename.tc', target._filename)
 
-    @mock.patch('pyltc.core.tctarget.open')
-    @mock.patch('pyltc.core.tctarget.print')
+    @mock.patch('pyltc.core.target.open')
+    @mock.patch('pyltc.core.target.print')
     def test_marshal_when_not_configured(self, fake_print, fake_open):
         target = TcFileTarget(NetDevice('bar44'), DIR_EGRESS)
         target.set_root_qdisc('htb', default=144)
@@ -136,8 +136,8 @@ class TestTcFileTarget(unittest.TestCase):
         fake_print.assert_not_called
         fake_open.assert_not_called
 
-    @mock.patch('pyltc.core.tctarget.open')
-    @mock.patch('pyltc.core.tctarget.print')
+    @mock.patch('pyltc.core.target.open')
+    @mock.patch('pyltc.core.target.print')
     def test_marshal_when_configured(self, fake_print, fake_open):
         fake_open.return_value = buff = io.StringIO()
         target = TcFileTarget(NetDevice('bar55'), DIR_EGRESS)
@@ -160,7 +160,7 @@ class TestTcCommandTarget(unittest.TestCase):
     def test_creation_proper(self):
         TcCommandTarget(NetDevice('foo11'), DIR_EGRESS)
 
-    @mock.patch('pyltc.core.tctarget.CommandLine')
+    @mock.patch('pyltc.core.target.CommandLine')
     def test_marshal(self, fake_command_line):
         target = TcCommandTarget(NetDevice('foo12'), DIR_EGRESS)
         target.clear()

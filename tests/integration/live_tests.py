@@ -23,7 +23,7 @@ from pyltc.util.rates import convert2bps
 from pyltc.util.counter import Counter
 from tests.util.base import LtcLiveTargetRun
 from tests.util.iperf_proc import TCPNetPerfTest
-from pyltc.core.tctarget import TcTarget
+from pyltc.core.target import TcTarget
 
 
 #: the standard duration (in sec.) for which the iperf client sends data to the iperf server

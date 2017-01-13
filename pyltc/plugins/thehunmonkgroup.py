@@ -15,6 +15,7 @@ import argparse
 from pyltc.conf import CONFIG_PATHS, __build__, __version__
 from parser import ParserError
 from pyltc.core.facade import TrafficControl
+from pyltc.core.netdevice import DeviceManager
 from pyltc.util.cmdline import CommandLine
 from pyltc.util.confparser import ConfigParser
 from pyltc.plugins.util import parse_branch
@@ -64,17 +65,19 @@ def parse_ini_file(profile, conf_file, verbose):
     return new_args
 
 
-def handle_ingress_arg(ingress_arg, verbose_arg, parser):
-    """Handles the --ingress command line argument."""
-    if not ingress_arg:
+def determine_ifb_device(ifbdevice_arg, verbose_arg, parser):
+    """Returns the name of the ifb device while handling the '--download' command line
+    argument (denoting ingress traffic control). Reuses an existing device if specified
+    and available or create a new device as necessary.
+    """
+    if not ifbdevice_arg:
         return None
-    available_ifs = os.listdir('/sys/class/net/')
-    available_ifbs = sorted((iface for iface in available_ifs if iface.startswith('ifb')))
-    if ingress_arg in available_ifbs:
-        return ingress_arg  # using an existing and preconfigured ifb device
-    if ingress_arg != 'setup':
+    available_ifbs = sorted(DeviceManager.all_iface_names(filter='ifb'))
+    if ifbdevice_arg in available_ifbs:
+        return ifbdevice_arg  # using an existing and preconfigured ifb device
+    if ifbdevice_arg != 'setup':
         parser.error(
-            "ifb device not found: {!r}. Leave --ingress switch empty to set up a new one.".format(ingress_arg))
+            "ifb device not found: {!r}. Leave '--ifbdevice' switch empty to set up a new one.".format(ifbdevice_arg))
         raise RuntimeError('UNREACHABLE')
 
     # we need to set up a new device
@@ -82,9 +85,8 @@ def handle_ingress_arg(ingress_arg, verbose_arg, parser):
         CommandLine('modprobe ifb numifbs=0', verbose=verbose_arg, sudo=True).execute()
         CommandLine('ip link add ifb0 type ifb', verbose=verbose_arg, sudo=True).execute()
         CommandLine('ip link set dev ifb0 up', verbose=verbose_arg, sudo=True).execute()
-        available_ifs = os.listdir('/sys/class/net/')
-        available_ifbs = sorted((iface for iface in available_ifs if iface.startswith('ifb')))
-        assert len(available_ifbs) == 1, "expected available_ifbs to have single element, got {!r}" \
+        available_ifbs = sorted(DeviceManager.all_iface_names(filter='ifb'))
+        assert len(available_ifbs) == 1, "expected available_ifbs to have single device, got {!r}" \
             .format(available_ifbs)
 
     ifbnum = [int(el.lstrip('ifb')) for el in available_ifbs][-1]  # + 1
@@ -94,7 +96,7 @@ def handle_ingress_arg(ingress_arg, verbose_arg, parser):
 
 
 def handle_version_arg(argv):
-    """Handles the --version command line argument."""
+    """Handles the '--version' command line argument."""
 
     def compose_version():
         name = sys.argv[0].split(os.sep)[-1]  # TODO: make this a constant
@@ -145,21 +147,22 @@ def parse_args(argv, old_args_dict=None):
                                  " tcp:dport:16000-24000:512kbit:5%%. PROTOCOL, PORTTYPE and RANGE are required."
                                  " RATE and/or JITTER must be present. PROTOCOL is one of 'tcp', 'udp'."
                                  " PORTTYPE is one of 'sport', 'dport'. RANGE is a dash-delimited range of ports"
-                                 " MINPORT-MAXPORT (inclusive).")
+                                 " MINPORT-MAXPORT (inclusive), a single port or the keyword 'all'.")
     parser_cmd.add_argument("-d", "--download", default=None, nargs='+', type=str,
                             metavar='PROTOCOL:PORTTYPE:RANGE:RATE:JITTER',
                             help="define discipline class(es) for download (ingress) port range(s). Example:"
                                  " tcp:dport:16000-24000:512kbit:5%%. PROTOCOL, PORTTYPE and RANGE are required."
                                  " RATE and/or JITTER must be present. PROTOCOL is one of 'tcp', 'udp'."
                                  " PORTTYPE is one of 'sport', 'dport'. RANGE is a dash-delimited range of ports"
-                                 " MINPORT-MAXPORT (inclusive).")
+                                 " MINPORT-MAXPORT (inclusive), a single port or the keyword 'all'.")
 
     args = parser.parse_args(argv)
     args.verbose = args.verbose or old_args_dict.get('verbose', False)
     args.clearonly_mode = args.clear and not (args.upload or args.download)
     if args.clearonly_mode:
-        args.upload = ['dummy']
-        args.download = ['dummy']
+        # artificially made to be "not False":
+        args.upload = [':dummy:']
+        args.download = [':dummy:']
 
     if not args.subparser:
         parser.error('No action requested.')
@@ -170,7 +173,7 @@ def parse_args(argv, old_args_dict=None):
 
         if not args.ifbdevice and (args.download or args.clearonly_mode):
             args.ifbdevice = 'setup'
-        args.ifbdevice = handle_ingress_arg(args.ifbdevice, args.verbose, parser)
+        args.ifbdevice = determine_ifb_device(args.ifbdevice, args.verbose, parser)
     else:
         args.ifbdevice = None
     return args
@@ -273,9 +276,10 @@ def plugin_main(argv, target_factory):
         old_args_dict = args.__dict__.copy()
         args = parse_args(profile_args, old_args_dict)
 
+    # Note that TrafficControl.get_iface() returns a "Null" NetDevice object if device name is None
     iface = TrafficControl.get_iface(args.interface, target_factory)
-    ifbdev = NetDevice.new_instance(args.ifbdevice,
-                                    target_factory)  # returns a "Null" NetDevice object if args.ifbdevice is None
+    ifbdev = TrafficControl.get_iface(args.ifbdevice, target_factory)
+
     if args.upload:
         if args.clear:
             iface.egress.clear()

@@ -3,7 +3,7 @@ TODO: docstring
 
 """
 from pyltc.core import DIR_EGRESS, DIR_INGRESS
-from pyltc.core.tctarget import TcCommandTarget
+from pyltc.core.target import TcCommandTarget
 
 
 def default_target_factory(iface, direction, callback=None):

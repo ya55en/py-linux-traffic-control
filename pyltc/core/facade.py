@@ -22,5 +22,5 @@ class TrafficControl(object):
         try:
             return cls._iface_map[ifname]
         except KeyError:
-            cls._iface_map[ifname] = iface = NetDevice(ifname, target_factory)
+            cls._iface_map[ifname] = iface = NetDevice.new_instance(ifname, target_factory)
             return iface
