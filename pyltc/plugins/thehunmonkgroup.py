@@ -14,12 +14,11 @@ import argparse
 
 from pyltc.conf import CONFIG_PATHS, __build__, __version__
 from parser import ParserError
-from pyltc.core.facade import TrafficControl
-from pyltc.core.netdevice import DeviceManager
 from pyltc.util.cmdline import CommandLine
 from pyltc.util.confparser import ConfigParser
+from pyltc.core.facade import TrafficControl
+from pyltc.core.netdevice import DeviceManager
 from pyltc.plugins.util import parse_branch
-from pyltc.core.netdevice import NetDevice
 
 #: netem (the qdisc that simulates special network conditions) works for a
 # default of 1000 packets. This was a source of problems and the workaround
@@ -87,7 +86,7 @@ def determine_ifb_device(ifbdevice_arg, verbose_arg, parser):
         CommandLine('ip link set dev ifb0 up', verbose=verbose_arg, sudo=True).execute()
         available_ifbs = sorted(DeviceManager.all_iface_names(filter='ifb'))
         assert len(available_ifbs) == 1, "expected available_ifbs to have single device, got {!r}" \
-            .format(available_ifbs)
+                                          .format(available_ifbs)
 
     ifbnum = [int(el.lstrip('ifb')) for el in available_ifbs][-1]  # + 1
     ifbdev = "ifb{}".format(ifbnum)

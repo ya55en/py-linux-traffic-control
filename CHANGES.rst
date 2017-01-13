@@ -2,7 +2,7 @@
 py-linux-traffic-control changes
 =================================
 
-v. 0.4.1 (2017-01-13)
+v. 0.4.2 (2017-01-14)
 --------------------------
 - Significant refactoring of the core framework.
 - New way to describe tc classes using --download (for ingress) and --upload (for egress)
@@ -11,6 +11,7 @@ v. 0.4.1 (2017-01-13)
 - New names for other arguments.
 - Improved handling of ifb (and any other network) devices using a new DeviceManager.
 - Improved integration test suite with richer simulation tests that can run w/o root privileges.
+- Updated README with simple examples of using the framework from python.
 
 
 v. 0.3.1 (2016-12-26)
