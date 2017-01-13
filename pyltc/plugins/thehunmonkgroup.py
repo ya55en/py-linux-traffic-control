@@ -157,6 +157,9 @@ def parse_args(argv, old_args_dict=None):
     args = parser.parse_args(argv)
     args.verbose = args.verbose or old_args_dict.get('verbose', False)
     args.clearonly_mode = args.clear and not (args.upload or args.download)
+    if args.clearonly_mode:
+        args.upload = ['dummy']
+        args.download = ['dummy']
 
     if not args.subparser:
         parser.error('No action requested.')

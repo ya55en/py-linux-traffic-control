@@ -62,36 +62,56 @@ class ConfigParser(object):
             return open(self._filename)
         if self._stream:
             return self._stream
-        raise IllegalState("Povide filename or stream")
+        raise IllegalState("Provide filename or stream")
+
+    def _strip_comments(self):
+
+        def find_comment_start(line):
+            return min((line + "#").find("#"), (line + ";").find(";"))
+
+        with self._ensure_stream_open() as fhl:
+            for line in fhl:
+                sig_part = line[:find_comment_start(line)]
+                if not sig_part.strip():
+                    yield ""
+                yield sig_part
+
+    def _preparse(self):
+        current_line = 'init'
+        for line in self._strip_comments():
+            if line.startswith(" "):  # FIXME: support also \t
+                if current_line == 'init':
+                    raise RuntimeError("Invalid configuration file.")
+                current_line += " " + line.strip()
+                continue
+            if current_line and current_line != 'init':
+                yield current_line
+            current_line = line.rstrip()
+        yield current_line
 
     def parse(self):
         section = None
         sections = dict()
 
-        def find_comment_start(line):
-            return min((line + "#").find("#"), (line + ";").find(";"))
-
         def process_line(line):
             nonlocal section, sections
-            sig_part = line[:find_comment_start(line)].strip()
-            if not sig_part:
+            if not line.strip(""):
                 return
-            if sig_part.startswith("["):
-                if not sig_part.endswith("]"):
+            if line.startswith("["):
+                if not line.endswith("]"):
                     raise ConfigSyntaxError("malformed section header in line %r", line)
-                sections[sig_part[1:-1]] = section = list()
-            elif sig_part.find("]") != -1:
+                sections[line[1:-1]] = section = list()
+            elif line.find("]") != -1:
                 raise ConfigSyntaxError("malformed section header in line %r", line)
             else:
                 if section is None:
                     raise ConfigSyntaxError("options wihtout section in line %r", line)
-                tokens = sig_part.split()
+                tokens = line.split()
                 tokens[0] = "--" + tokens[0]
                 section.extend(tokens)
 
-        with self._ensure_stream_open() as fhl:
-            for line in fhl:
-                process_line(line)
+        for line in self._preparse():
+            process_line(line)
         self._sections = sections
         return self
 
