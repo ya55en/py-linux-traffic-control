@@ -31,13 +31,13 @@ Clearing the default lo interface::
 
 Clearing the eth0 interface, with verbose output::
 
- # ./ltc.py tc --clear --iface eth0 -v
+ # ./ltc.py tc --clear --interface eth0 -v
 
-Setting up some dport classes::
+Setting up some upload classes (dport and sport)::
 
- # ./ltc.py tc -c -v --dclass tcp:6000-6080:512kbit
- # ./ltc.py tc -c -v -i eth0 -dc tcp:6000-6080:512kbit -dc udp:5000-5080:2mbit:3%
- # ./ltc.py tc -c -v -i eth0 -dc tcp:6000-6080:512kbit -dc udp:5000-5080:2mbit:3% -sc tcp:2000-2080:256kbit -sc udp:3000-3080:1mbit:3%
+ # ./ltc.py tc -c -v -u tcp:dport:6000-6080:512kbit
+ # ./ltc.py tc -c -v -i eth0 -u tcp:dport:6000-6080:512kbit udp:dport:5000-5080:2mbit:3%
+ # ./ltc.py tc -c -v -i eth0 -u tcp:dport:6000-6080:512kbit udp:dport:5000-5080:2mbit:3% tcp:sport:2000-2080:256kbit udp:sport:3000-3080:1mbit:3%
 
 Setting up some disciplines as defined in 4g-sym profile of a default config file::
 
@@ -55,9 +55,9 @@ Setting up some disciplines as defined in 3g-sym profile of the given config fil
 Ingress Traffic Control
 -----------------------
 
-Sample command for setting up ingress traffic control creating a new ifb device::
+Sample command for setting up download (ingress) traffic control creating a new ifb device::
 
- # ./ltc.py tc -cvi eth0 --ingress -dc tcp:5000-5002:512kbit -dc udp:4000-4002:256kbit
+ # ./ltc.py tc -cvi eth0 --download tcp:dport:5000-5002:512kbit udp:dport:4000-4002:256kbit
 
 The tool will create a new ifb device if none is found, or use the device with the highest
 number if at least one is found.
@@ -69,13 +69,16 @@ If you want to use a specific ifb device, make sure you first create it with::
 
 and then give it to ltc.py as a value to the *--ingress* switch::
 
- # ./ltc.py tc -cvi eth0 --ingress ifb0 -dc tcp:8080-8088:256kbit:7%
+ # ./ltc.py tc -cvi eth0 --ifbdevice ifb0 --download tcp:dport:8080-8088:256kbit:7%
 
-Note that you cannot setup egress and ingress controll within the same command,
-or within the same profile. (We may think on supporting this in the future,
-though.)
+Seting up both upload (egress) and download (ingress) traffic control is now possible, e.g.::
+
+ # ./ltc.py tc -cvi eth0 --download tcp:dport:8080-8088:256kbit:7% --upload tcp:sport:20000-49999:256kbit:7%
 
 Comments in profile config files are denoted by semicolon ';' or hash sign '#'.
+
+Profile configuration files
+----------------------------
 
 Sample profile config file content::
 
@@ -83,22 +86,26 @@ Sample profile config file content::
  [4g-sym]
  clear
  iface eth0 ; the primary interface
- dclass tcp:6000-6999:512kbit
+ upload tcp:dport:6000-6999:512kbit
 
  ; Simulating inbound 4G network confitions
  [4g-sym]
  clear
  iface eth0 ; the primary interface
- ingress
- dclass tcp:6000-6999:2mbit
+ download
+    ; !IMPORTANT: Note the indent of the two class definitions!
+    tcp:dport:6000-6999:2mbit
+    tcp:dport:8000-8099:1mbit
 
  # Simulating outbound 3G network confitions
  [3g-sym]
  clear
  iface eth0  # the primary interface
- dclass tcp:8000-8080:96kbit
- dclass udp:5000-5080:96kbit:3%
- sclass tcp:10000-29999:256kbit:1%
+ upload tcp:dport:8000-8080:96kbit
+ download
+   tcp:dport:8000-8080:96kbit
+   udp:dport:5000-5080:96kbit:3%
+   tcp:sport:10000-29999:256kbit:1%
 
 
 Functional Testing
@@ -113,7 +120,7 @@ Prerequisites
 The live tests are based on ``iperf``. You will need iperf (NOT ``iperf3``).
 On debian-based distros installing it would look like::
 
-$ sudo apt-get install iperf
+ $ sudo apt-get install iperf
 
 **********
 How to run
@@ -136,5 +143,26 @@ Important TODOs:
 
 - Support ingress and egress shaping in the same test scenario.
 
-
 Have fun! ;)
+
+Using ``pyltc`` framework from python
+-------------------------------------
+
+You can leverage the pyltc core framework to create your own traffic control recipes.
+
+Here is a simple example::
+
+ from pyltc.core.facade import TrafficControl
+
+ TrafficControl.init()
+
+ iface = TrafficControl.get_iface('eth0')
+ iface.egress.clear()
+ rootqd = iface.egress.add_root_qdisc('htb')
+ qdclass = iface.egress.add_class('htb', rootqd, rate='384kbit')
+ filter = iface.egress.add_filter('u32')
+ iface.egress.marshal()
+
+The ``marshal()`` call at the end will try to configure the kernel with the given root qdisc and a qdisc class, as well as adding the filter.
+
+More on the framework usage coming soon!

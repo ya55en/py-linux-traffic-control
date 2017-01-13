@@ -2,6 +2,16 @@
 py-linux-traffic-control changes
 =================================
 
+v. 0.4.1 (2017-01-13)
+--------------------------
+- Significant refactoring of the core framework.
+- New way to describe tc classes using --download (for ingress) and --upload (for egress)
+  command line arguments. They also accept multiple tokens each defining a separate class.
+- Both upload and download setups are now supported within the same command line.
+- New names for other arguments.
+- Improved handling of ifb (and any other network) devices using a new DeviceManager.
+- Improved integration test suite with richer simulation tests that can run w/o root privileges.
+
 
 v. 0.3.1 (2016-12-26)
 --------------------------
