@@ -177,7 +177,9 @@ Using ``pyltc`` framework from python
 
 You can leverage the pyltc core framework to create your own traffic control recipes.
 
-Here is a simple example::
+Here is a simple example:
+
+.. code:: python
 
  from pyltc.core.facade import TrafficControl
 
@@ -192,7 +194,9 @@ Here is a simple example::
 
 The ``marshal()`` call at the end will actually configure the kernel with the given htb *root qdisc* and an htb *qdisc class*, as well as adding the filter.
 
-Details on what happens in the above code::
+Details on what happens in the above code:
+
+.. code:: python
 
  # This is the facade where you get interface objects from:
  from pyltc.core.facade import TrafficControl
@@ -224,7 +228,9 @@ Details on what happens in the above code::
  # (like saving the commands to a file).
  iface.egress.marshal()
 
-A more complex example that illustrates download (ingress) control::
+A more complex example that illustrates download (ingress) control:
+
+.. code:: python
 
  from pyltc.core.facade import TrafficControl
  from pyltc.core.netdevice import DeviceManager
