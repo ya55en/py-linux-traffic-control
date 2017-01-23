@@ -81,6 +81,13 @@ class DeviceManager(object):
 
 
 class NetDevice(object):
+    """TODO: doc"""
+
+    _iface_map = None
+
+    @classmethod
+    def init(cls):
+        cls._iface_map = dict()
 
     @classmethod
     def minimal_nonexisting_name(cls, module):
@@ -135,6 +142,14 @@ class NetDevice(object):
         if target_factory is None:
             target_factory = default_target_factory
         return cls(name, target_factory)
+
+    @classmethod
+    def get_interface(cls, ifname, target_factory=None):
+        try:
+            return cls._iface_map[ifname]
+        except KeyError:
+            cls._iface_map[ifname] = iface = cls.new_instance(ifname, target_factory)
+            return iface
 
     @property
     def name(self):

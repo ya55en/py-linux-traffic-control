@@ -185,7 +185,7 @@ Here is a simple example:
 
  TrafficControl.init()
 
- iface = TrafficControl.get_iface('eth0')
+ iface = TrafficControl.get_interface('eth0')
  iface.egress.clear()
  rootqd = iface.egress.set_root_qdisc('htb')
  qdclass = iface.egress.add_class('htb', rootqd, rate='384kbit')
@@ -205,7 +205,7 @@ Details on what happens in the above code:
  TrafficControl.init()
 
  # Get an object that represents the network interface 'eth0':
- iface = TrafficControl.get_iface('eth0')
+ iface = TrafficControl.get_interface('eth0')
 
  # The ITarget.clear() method builds a command that removes any previously attached
  # qdiscs to the egress root hook of the Linux kernel:
@@ -239,7 +239,7 @@ A more complex example that illustrates download (ingress) control:
  TrafficControl.init()
 
  # The target factory used here provides a target that only prints on stdout:
- iface = TrafficControl.get_iface('eth0', target_factory=tc_file_target_factory)
+ iface = TrafficControl.get_interface('eth0', target_factory=tc_file_target_factory)
 
  # Setting up an ifb device for the ingress control
  # (We need a convenience method to ease this setup!)
@@ -247,7 +247,7 @@ A more complex example that illustrates download (ingress) control:
 
  # This one may raise "AssertionError: Device already exists: 'ifb0'" -- try with ifb1 (or ifb2, etc.)
  ifbdev_name = DeviceManager.device_add(ifbdev_name)
- ifbdev = TrafficControl.get_iface(ifbdev_name, target_factory=tc_file_target_factory)
+ ifbdev = TrafficControl.get_interface(ifbdev_name, target_factory=tc_file_target_factory)
 
  iface.ingress.set_redirect(iface, ifbdev)
 

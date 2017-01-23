@@ -4,23 +4,29 @@ Facade for the PyLTC framework.
 """
 from pyltc.core.netdevice import NetDevice
 from pyltc.core.ltcnode import Qdisc, Filter
+from pyltc.plugins.simnet import SimNetPlugin
 
 
 class TrafficControl(object):
     """A facade static class for convenient use of the pyltc framework."""
 
-    _iface_map = None
+    _plugins_map = {
+        'simnet': SimNetPlugin,
+    }
 
     @classmethod
     def init(cls):
-        cls._iface_map = dict()
+        NetDevice.init()
         Qdisc.init()
         Filter.init()
 
     @classmethod
-    def get_iface(cls, ifname, target_factory=None):
+    def get_interface(cls, ifname, target_factory=None):
+        return NetDevice.get_device(ifname, target_factory=None)
+
+    @classmethod
+    def get_plugin(cls, name, target_factory=None):
         try:
-            return cls._iface_map[ifname]
+            return cls._plugins_map[name](target_factory=target_factory)
         except KeyError:
-            cls._iface_map[ifname] = iface = NetDevice.new_instance(ifname, target_factory)
-            return iface
+            raise RuntimeError("Unknown plugin {!r}".format(name))

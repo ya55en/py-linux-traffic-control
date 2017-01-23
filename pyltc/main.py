@@ -16,7 +16,7 @@ and for (b), the currently built-in thehunmonkgroup module is used.
 import sys
 
 from pyltc.core.facade import TrafficControl
-from pyltc.plugins import thehunmonkgroup
+from pyltc.plugins import simnet
 from parser import ParserError
 
 
@@ -30,7 +30,7 @@ def pyltc_entry_point(argv=None, target_factory=None):
     """
     TrafficControl.init()
     try:
-        thehunmonkgroup.plugin_main(argv, target_factory)
+        simnet.plugin_main(argv, target_factory)
     except ParserError as err:
         print("ltc.py: error:", err, file=sys.stderr)
         return 2

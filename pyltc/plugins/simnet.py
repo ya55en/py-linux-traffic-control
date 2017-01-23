@@ -16,8 +16,7 @@ from pyltc.conf import CONFIG_PATHS, __build__, __version__
 from parser import ParserError
 from pyltc.util.cmdline import CommandLine
 from pyltc.util.confparser import ConfigParser
-from pyltc.core.facade import TrafficControl
-from pyltc.core.netdevice import DeviceManager
+from pyltc.core.netdevice import DeviceManager, NetDevice
 from pyltc.plugins.util import parse_branch
 
 #: netem (the qdisc that simulates special network conditions) works for a
@@ -263,6 +262,97 @@ def determine_all_rates(upload, download):
     return tcp_all_rate, udp_all_rate
 
 
+class SimpleNamespace(object):
+    def __repr__(self):
+        return "<SimpleNamespace({!r}) at 0x{:016x}>".format(self.__dict__, id(self))
+
+
+class SimNetPlugin(object):
+
+    def __init__(self, args=None, target_factory=None):
+        """
+        :param args: parser.Namespace -
+        :param target_factory: TODO: doc
+        """
+        self._target_factory = target_factory
+        if args is None:
+            self._args = SimpleNamespace()
+            self.configure()
+        else:
+            self._args = args
+
+    def configure(self, clear=False, verbose=False, interface='lo', ifbdevice=None):
+        """
+        TODO: doc
+        :param clear:
+        :param verbose:
+        :param interface:
+        :param ifbdevice:
+        :return:
+        """
+        self._args.clear = clear
+        self._args.verbose = verbose
+        self._args.interface = interface
+        self._args.ifbdevice = ifbdevice
+        self._args.upload = list()
+        self._args.download = list()
+        self._args.clearonly_mode = False
+
+    def setup(self, upload=None, download=None, protocol=None, porttype=None, range=None,
+              rate=None, jitter=None):
+        """
+        TODO: doc
+        :param upload:
+        :param download:
+        :param protocol:
+        :param porttype:
+        :param range:
+        :param rate:
+        :param jitter:
+        :return:
+        """
+        assert bool(upload) != bool(download), \
+            "exactly one of `upload`, `download` must be True, got upload={!r}, download={!r}".format(upload, download)
+
+        seq = (elm for elm in (protocol, porttype, range, rate, jitter) if elm is not None)
+        token = ":".join(seq)
+        thelist = self._args.upload if upload else self._args.download
+        thelist.append(token)
+
+    def marshal(self):
+        """TODO: doc"""
+        # Note that TrafficControl.get_interface() returns a "Null" NetDevice object if device name is None
+        #print(self._args)
+        iface = NetDevice.get_interface(self._args.interface, self._target_factory)
+        ifbdev = NetDevice.get_interface(self._args.ifbdevice, self._target_factory)
+
+        if self._args.upload:
+            if self._args.clear:
+                iface.egress.clear()
+            if not self._args.clearonly_mode:
+                tcp_all_rate, udp_all_rate = determine_all_rates(self._args.upload, self._args.download)
+                tcp_hook, udp_hook = build_basics(iface.egress, tcp_all_rate, udp_all_rate)
+                build_tree(iface.egress, tcp_hook, udp_hook, self._args.upload)
+
+            iface.egress.configure(verbose=self._args.verbose)
+            iface.egress.marshal()
+
+        if self._args.download:
+            if self._args.clear:
+                iface.ingress.clear()
+                ifbdev.egress.clear()
+            if not self._args.clearonly_mode:
+                iface.ingress.set_redirect(iface, ifbdev)
+                tcp_all_rate, udp_all_rate = determine_all_rates(self._args.upload, self._args.download)
+                tcp_hook, udp_hook = build_basics(ifbdev.egress, tcp_all_rate, udp_all_rate)
+                build_tree(ifbdev.egress, tcp_hook, udp_hook, self._args.download)
+
+            iface.ingress.configure(verbose=self._args.verbose)
+            iface.ingress.marshal()
+            ifbdev.egress.configure(verbose=self._args.verbose)
+            ifbdev.egress.marshal()
+
+
 def plugin_main(argv, target_factory):
     if not argv:
         argv = sys.argv[1:]
@@ -276,32 +366,5 @@ def plugin_main(argv, target_factory):
         old_args_dict = args.__dict__.copy()
         args = parse_args(profile_args, old_args_dict)
 
-    # Note that TrafficControl.get_iface() returns a "Null" NetDevice object if device name is None
-    iface = TrafficControl.get_iface(args.interface, target_factory)
-    ifbdev = TrafficControl.get_iface(args.ifbdevice, target_factory)
-
-    if args.upload:
-        if args.clear:
-            iface.egress.clear()
-        if not args.clearonly_mode:
-            tcp_all_rate, udp_all_rate = determine_all_rates(args.upload, args.download)
-            tcp_hook, udp_hook = build_basics(iface.egress, tcp_all_rate, udp_all_rate)
-            build_tree(iface.egress, tcp_hook, udp_hook, args.upload)
-
-        iface.egress.configure(verbose=args.verbose)
-        iface.egress.marshal()
-
-    if args.download:
-        if args.clear:
-            iface.ingress.clear()
-            ifbdev.egress.clear()
-        if not args.clearonly_mode:
-            iface.ingress.set_redirect(iface, ifbdev)
-            tcp_all_rate, udp_all_rate = determine_all_rates(args.upload, args.download)
-            tcp_hook, udp_hook = build_basics(ifbdev.egress, tcp_all_rate, udp_all_rate)
-            build_tree(ifbdev.egress, tcp_hook, udp_hook, args.download)
-
-        iface.ingress.configure(verbose=args.verbose)
-        iface.ingress.marshal()
-        ifbdev.egress.configure(verbose=args.verbose)
-        ifbdev.egress.marshal()
+    simnet = SimNetPlugin(args, target_factory)
+    simnet.marshal()

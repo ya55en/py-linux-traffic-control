@@ -4,7 +4,7 @@ Base test classes for PyLTC integration testing.
 """
 
 from pyltc.core import DIR_EGRESS
-from pyltc.plugins.thehunmonkgroup import parse_args
+from pyltc.plugins.simnet import parse_args
 from pyltc.core.target import TcTarget, TcCommandTarget, TcFileTarget
 from pyltc.main import pyltc_entry_point
 from tests.util.iperf_proc import TCPNetPerfTest, UDPNetPerfTest
