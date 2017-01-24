@@ -1,5 +1,5 @@
 """
-TODO: doc
+Unit tests for the target chain builders module.
 
 """
 import unittest

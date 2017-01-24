@@ -1,5 +1,6 @@
 """
-TODO: doc
+Unit tests for the pytc helper stuff.
+
 """
 import unittest
 from configparser import ParsingError

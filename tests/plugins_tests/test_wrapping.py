@@ -1,5 +1,6 @@
 """
-TODO: doc
+Unit tests for the simnet plugin wrapper class.
+
 """
 import unittest
 
