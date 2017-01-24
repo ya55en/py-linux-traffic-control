@@ -306,7 +306,7 @@ Here's a real world example:
  from pyltc.core.facade import TrafficControl
 
  TrafficControl.init()
- simnet = TrafficControl.get_plugin('simnet', self.target_factory)
+ simnet = TrafficControl.get_plugin('simnet')
  simnet.configure(interface='lo1', ifbdevice='ifb0', clear=True)
  simnet.setup(upload=True, protocol='tcp', porttype='dport', range='8000-8080', rate='512kbit', jitter='7%')
  simnet.setup(download=True, protocol='tcp', range='all', jitter='5%')
