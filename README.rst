@@ -281,29 +281,29 @@ A more complex example that illustrates download (ingress) control:
 Using the ``simnet`` wrapper
 *****************************
 
-Our goal with pyltc is to provide a platform that allows for easily creating, using and sharing LTC recipes
-both with and without command line wrapping.
+Our goal with ``pyltc`` is to provide a platform that allows for easily creating, using and sharing LTC
+recipes both with and without command line interface.
 
 The current functionality is separated into a plugin named ``simnet`` (for "simulate network conditions").
 There is a wrapping class with methods ``configure()``, ``setup()`` and ``marshal()``. The class is
-in ``pyltc.plugins.simnet.SimNetPlugin``. The idea is to have an ``AbstractPlugin`` class with a well
-defined interface, have ``SimNetPlugin`` to implement that and let other people implement theirs.
+``pyltc.plugins.simnet.SimNetPlugin``. The idea is to have an ``AbstractPlugin`` class with a well
+defined interface, have ``SimNetPlugin`` implement that and let other people implement their own
+plugins.
 
-So here's how to use ``SimNetPlugin``: After initializing the framework builders' state with
+So here's how to use ``SimNetPlugin``: after initializing the framework builders' state with
 ``TrafficControl.init()``, the next thing to do it to obtain an instance of the plugin class via a call
 to ``TrafficControl.get_plugin()``.
 
-You would set common parameters like ``--clear`` or ``--verbose`` using the plugin ``configure()``. The pluign
-``setup()`` method adds recipes for setting up either _upload_ or _download_ disciplines.
+You would set common parameters like ``--clear`` or ``--verbose`` using the plugin ``configure()``. The plugin
+``setup()`` method adds recipes for setting up either ``upload`` or ``download`` disciplines.
 
-Finally, call the plugin ``marshal()`` method to get the setup actually eecuted against the kernel using ``tc``.
+Finally, call the plugin ``marshal()`` method to get the setup actually executed against the kernel using ``tc``.
 
 Here's a real world example:
 
 .. code:: python
 
  from pyltc.core.facade import TrafficControl
-
 
  TrafficControl.init()
  simnet = TrafficControl.get_plugin('simnet', self.target_factory)
