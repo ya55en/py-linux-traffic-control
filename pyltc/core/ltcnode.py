@@ -117,14 +117,13 @@ class Filter(object):
         cls._handle_counter = Counter(start=1)
 
     def __init__(self, name, parent, cond, flownode, prio=None, handle=None):
-        """TODO: doc
-
-        :param name:
-        :param parent:
-        :param cond:
-        :param flownode:
-        :param prio:
-        :param handle:
+        """Initializer.
+        :param name: string - the filter name (e.g. 'u32')
+        :param parent: LtcNode - the parent to "attach" this filter to
+        :param cond: string - the filter match condition
+        :param flownode: LtcNode - the node to direct the mathing flow at
+        :param prio: int - the priority level
+        :param handle: int - the handle  # FIXME: check the type, we may need to putput hex format
         """
         self._name = name  # the filtertype
         self._parent = parent

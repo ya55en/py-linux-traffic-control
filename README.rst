@@ -36,7 +36,8 @@ Clearing the eth0 interface, with verbose output::
 
  $ sudo ./ltc.py tc -c --interface eth0 -v
 
-Note that the two commands above will also clear the ``ifb`` device used for ingress control. If you want to clear only the upload (egress) chain, do::
+Note that the two commands above will also clear the ``ifb`` device used for ingress control. If you want
+to clear only the upload (egress) chain, do::
 
  $ sudo ./ltc.py tc -c --interface eth0 --upload -v
 
@@ -85,7 +86,9 @@ Seting up both upload (egress) and download (ingress) traffic control is now pos
 Profile configuration files
 ----------------------------
 
-pyltc command line has an alternative arguments parser which expects a single positional argument which is the name of a *profile*. *Profiles* are stored in profile configuration files with a syntax shown in the sample below. (Comments in profile config start with either a semicolon ``';'`` or hash sign ``'#'``.)
+pyltc command line has an alternative arguments parser which expects a single positional argument which is
+the name of a *profile*. *Profiles* are stored in profile configuration files with a syntax shown in the
+sample below. (Comments in profile config start with either a semicolon ``';'`` or hash sign ``'#'``.)
 
 To invoke ``ltc.py`` in that mode, you'll do something like::
 
@@ -147,9 +150,12 @@ To run the current simulation test suite, start it from the project root with::
 
 $ sudo python3 tests/integration/sim_tests.py
 
-The simulation suite doesn't actually run any tc commands, but it makes sure that the pyltc tool generates a recipe of commands as expected.
+The simulation suite doesn't actually run any tc commands, but it makes sure that the pyltc tool generates
+a recipe of commands as expected.
 
-Such testing is not nearly as reliable as practical live tests, but it does cover practically all of the functionality and it runs in less than a second. This makes it a pretty convenient way to quickly and inexpensively test changes at the highest level.
+Such testing is not nearly as reliable as practical live tests, but it does cover practically all of the
+functionality and it runs in less than a second. This makes it a pretty convenient way to quickly and
+inexpensively test changes at the highest level.
 
 Live Test Suite
 ~~~~~~~~~~~~~~~~
@@ -175,6 +181,9 @@ Important TODOs:
 Using ``pyltc`` framework from python
 -------------------------------------
 
+Using the core framework
+*************************
+
 You can leverage the pyltc core framework to create your own traffic control recipes.
 
 Here is a simple example:
@@ -192,7 +201,8 @@ Here is a simple example:
  filter = iface.egress.add_filter('u32', rootqd, cond="ip protocol 17 0xff", flownode=qdclass)
  iface.egress.marshal()
 
-The ``marshal()`` call at the end will actually configure the kernel with the given htb *root qdisc* and an htb *qdisc class*, as well as adding the filter.
+The ``marshal()`` call at the end will actually configure the kernel with the given htb *root qdisc* and
+an htb *qdisc class*, as well as adding the filter.
 
 Details on what happens in the above code:
 
@@ -266,5 +276,45 @@ A more complex example that illustrates download (ingress) control:
  filter = iface.ingress.add_filter('u32', rootqd, cond="ip protocol 17 0xff", flownode=qdclass)
  # With the above used target factory, this will save the commands to a file:
  iface.ingress.marshal()
+
+
+Using the ``simnet`` wrapper
+*****************************
+
+Our goal with pyltc is to provide a platform that allows for easily creating, using and sharing LTC recipes
+both with and without command line wrapping.
+
+The current functionality is separated into a plugin named ``simnet`` (for "simulate network conditions").
+There is a wrapping class with methods ``configure()``, ``setup()`` and ``marshal()``. The class is
+in ``pyltc.plugins.simnet.SimNetPlugin``. The idea is to have an ``AbstractPlugin`` class with a well
+defined interface, have ``SimNetPlugin`` to implement that and let other people implement theirs.
+
+So here's how to use ``SimNetPlugin``: After initializing the framework builders' state with
+``TrafficControl.init()``, the next thing to do it to obtain an instance of the plugin class via a call
+to ``TrafficControl.get_plugin()``.
+
+You would set common parameters like ``--clear`` or ``--verbose`` using the plugin ``configure()``. The pluign
+``setup()`` method adds recipes for setting up either _upload_ or _download_ disciplines.
+
+Finally, call the plugin ``marshal()`` method to get the setup actually eecuted against the kernel using ``tc``.
+
+Here's a real world example:
+
+.. code:: python
+
+ from pyltc.core.facade import TrafficControl
+
+
+ TrafficControl.init()
+ simnet = TrafficControl.get_plugin('simnet', self.target_factory)
+ simnet.configure(interface='lo1', ifbdevice='ifb0', clear=True)
+ simnet.setup(upload=True, protocol='tcp', porttype='dport', range='8000-8080', rate='512kbit', jitter='7%')
+ simnet.setup(download=True, protocol='tcp', range='all', jitter='5%')
+ simnet.marshal()
+
+
+For an example of how to use other target builders than the default, please refer to
+``tests.plugins_tests.test_wrapping``.
+
 
 Have fun! ;)

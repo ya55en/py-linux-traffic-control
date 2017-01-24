@@ -1,5 +1,5 @@
 """
-TODO: doc
+Counter utility objects module.
 
 """
 import collections

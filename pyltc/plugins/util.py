@@ -1,11 +1,12 @@
 """
-TODO: docstring
+Pyltc pluguins' common helpers.
+
+(Currently serves the one and only ``simnet`` plugin.)
 
 """
 import re
 from configparser import ParsingError
 
-# regex = re.compile(r'^(tcp|udp):(all|\d{1,5}\-\d{1,5}|\d{1,5})(:\d+[a-z]{3,4})?(:\d{1,3}%)?$')
 regex = re.compile(r'^(tcp|udp)(:sport|:dport)?:(all|\d{1,5}\-\d{1,5}|\d{1,5})(:\d+[a-z]{3,4})?(:\d{1,3}%)?$')
 
 

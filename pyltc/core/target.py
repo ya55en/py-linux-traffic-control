@@ -1,5 +1,21 @@
 """
-TODO: doc
+Target chain builders module.
+
+Target chain builders are Bulder pattern objects implementing the ``ITarget`` interface
+that accumulate setup instructions related to configuring the Linux kernel traffic
+control.
+
+There are to target chains for each interface: "egress" (or "root") for outgoing traffic and "ingress"
+chain for incoming traffic.
+
+This module provides exclusively tc-oriented targets, if which the default one is ``TcCommandTarget``
+whos ``marshal()`` will attempt to actually execute the accumulated setups as ``tc`` commands and
+thus actually configure the kernel with that setup.
+
+The other implementations here may print the setup to a file or stdout and are useful for testing purposes.
+
+Targets of the same "family" differ mainly in their ``marshal()`` where the "installing" behaviour is
+implemented.
 
 """
 from pyltc.core import ITarget, DIR_EGRESS, DIR_INGRESS
@@ -9,9 +25,10 @@ from pyltc.util.cmdline import CommandLine, CommandFailed
 
 class TcTarget(ITarget):
     """
-    TODO: doc
-
+    An abstract ``ITarget`` that builds a setup of ``tc`` commands to configure the Linux
+    kernel traffic control.
     """
+
     @staticmethod
     def as_subcommand(ltcnode):
         """Represents this ltc node as a tc-compatible sub-command.
@@ -113,7 +130,7 @@ class TcTarget(ITarget):
 
 
 class TcFileTarget(TcTarget):
-    """An ``ITarget`` implementation that builds /sbin/tc compatible commands
+    """An ``ITarget`` implementation that builds ``/sbin/tc`` compatible commands
     and finally represents them as a multi-line string or saves them into a file.
     """
     def __init__(self, iface, direction):
@@ -138,8 +155,9 @@ class TcFileTarget(TcTarget):
 
 
 class TcCommandTarget(TcTarget):
-    """An ``ITarget`` implementation that builds /sbin/tc compatible commands
-    and finally executes them.
+    """An ``ITarget`` implementation that builds ``/sbin/tc`` compatible commands
+    and finally executes them against the kernel in order to configure its traffic
+    control disciplines.
     """
     def __init__(self, iface, direction):
         super(TcCommandTarget, self).__init__(iface, direction)

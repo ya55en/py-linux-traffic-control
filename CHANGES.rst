@@ -2,6 +2,14 @@
 py-linux-traffic-control changes
 =================================
 
+v. 0.4.4 (2017-01-24)
+--------------------------
+- Refactored the core and the ``thehunmonkgroup`` plugin into a more loosly
+  coupled system;
+- Renamed the ``thehunmonkgroup`` into ``simnet`` and provided a wrapper class
+  for easy setup of rate+jitter recipes programmatically.
+
+
 v. 0.4.2 (2017-01-14)
 --------------------------
 - Significant refactoring of the core framework.

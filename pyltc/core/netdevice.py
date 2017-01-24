@@ -1,5 +1,5 @@
 """
-TODO: doc
+Network device management classes.
 
 """
 import os
@@ -81,7 +81,7 @@ class DeviceManager(object):
 
 
 class NetDevice(object):
-    """TODO: doc"""
+    """Network Device instance representation class."""
 
     _iface_map = None
 
@@ -91,9 +91,11 @@ class NetDevice(object):
 
     @classmethod
     def minimal_nonexisting_name(cls, module):
-        """TODO: doc
-        :param module:
-        :return:
+        """Returns the name of the network device for given module that has lowest
+        sequence number.
+
+        :param module: string - the name of the network device module (e.g. 'ifb')
+        :return: string - the name of the device with lowest number (e.g. 'ifb0')
         """
         existing_names = DeviceManager.all_iface_names(module)
         if not existing_names:
@@ -134,8 +136,15 @@ class NetDevice(object):
 
     @classmethod
     def new_instance(cls, name, target_factory=None):
-        """
-        TODO: document
+        """Creates and returns a new NetDevice instance. Ingress and egress builder chains will be
+        created using given target_factory or the default one if target_factory is not provided.
+
+        :param name: string - the name of the device as known by the kernel (e.g. 'eth0')
+               If ``name`` is ``None``, a "Null object" will be returned that does
+               nothing on calling any of its methods.
+        :param target_factory: callable returning an ``ITarget`` - the factory to be used
+               to create the Ingress and egress chain builders
+        :return: NetDevice - the network device object for this device name
         """
         if name is None:
             return MagicMock()

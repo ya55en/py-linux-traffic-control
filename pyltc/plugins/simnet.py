@@ -5,6 +5,7 @@ Note that this NOT yet converted to an actual plugin but rather imported
 as a Python module currently.
 
 TODO: introduce plugin functionality and convert this to be the first plugin ;)
+      (This has been partially done with introducing the ``SimNetPlugin`` class.)
 
 """
 
@@ -270,9 +271,10 @@ class SimpleNamespace(object):
 class SimNetPlugin(object):
 
     def __init__(self, args=None, target_factory=None):
-        """
-        :param args: parser.Namespace -
-        :param target_factory: TODO: doc
+        """Initializer.
+        :param args: parser.Namespace - the command line argumets
+        :param target_factory: callable returning ITarget - the target factory
+               to create the target chanin builders with
         """
         self._target_factory = target_factory
         if args is None:
@@ -282,13 +284,12 @@ class SimNetPlugin(object):
             self._args = args
 
     def configure(self, clear=False, verbose=False, interface='lo', ifbdevice=None):
-        """
-        TODO: doc
-        :param clear:
-        :param verbose:
-        :param interface:
-        :param ifbdevice:
-        :return:
+        """Configures the general options given as named arguments.
+
+        :param clear: bool - whether to generate a clearing command at the command sequence start
+        :param verbose: bool - whether to be verbose
+        :param interface: string - the network device name
+        :param ifbdevice: string - the ifb network device name, if any
         """
         self._args.clear = clear
         self._args.verbose = verbose
@@ -300,16 +301,20 @@ class SimNetPlugin(object):
 
     def setup(self, upload=None, download=None, protocol=None, porttype=None, range=None,
               rate=None, jitter=None):
-        """
-        TODO: doc
-        :param upload:
-        :param download:
-        :param protocol:
-        :param porttype:
-        :param range:
-        :param rate:
-        :param jitter:
-        :return:
+        """Sets up traffic control disciplines effectively limiting the traffic for given direction,
+        protocol, port types, port ranges with given rate and introducing an optional jitter.
+        Note that only one of ``uplaod`` or ``download`` can be set. For configuring disciplines
+        for both directions, repeat this ``setup()`` call with the alternative arguments.
+
+        :param upload: bool - indicated upload direction (ingress)
+        :param download: bool - indicated download direction (egress)
+        :param protocol: string - the Internet protocol, currently one of 'tcp' or 'udp'
+        :param porttype: string - the port type, one of 'sport' -- indicated source port control,
+                                   or 'dport' -- indicates destination port control
+        :param range: string - the port or port range boundaries, dash-delimited (e.g. '8080' or '8000-8088')
+        :param rate: string - the rate limit as understood by ``/sbin/tc`` sub-commands (pleae refer to
+                               ``tc`` man pahe)
+        :param jitter: string - the packet loss percent, acompanied by the percent sign, e.g. '7%'
         """
         assert bool(upload) != bool(download), \
             "exactly one of `upload`, `download` must be True, got upload={!r}, download={!r}".format(upload, download)
@@ -320,7 +325,7 @@ class SimNetPlugin(object):
         thelist.append(token)
 
     def marshal(self):
-        """TODO: doc"""
+        """Applies setup recipe instruction already built."""
         # Note that TrafficControl.get_interface() returns a "Null" NetDevice object if device name is None
         #print(self._args)
         iface = NetDevice.get_interface(self._args.interface, self._target_factory)
