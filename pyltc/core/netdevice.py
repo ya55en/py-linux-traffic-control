@@ -41,7 +41,7 @@ class DeviceManager(object):
         """Sets down all module-related devices, then removes module from kernel."""
         for ifname in cls.all_iface_names(filter=name):
             cls.device_down(ifname)
-            cls.remove_module(name)
+        cls.remove_module(name)
 
     @classmethod
     def split_name(cls, name):

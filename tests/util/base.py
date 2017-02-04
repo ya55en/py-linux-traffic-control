@@ -3,12 +3,11 @@ Base test classes for PyLTC integration testing.
 
 """
 
-from pyltc.core import DIR_EGRESS
 from pyltc.plugins.simnet import parse_args
 from pyltc.core.target import TcTarget, TcCommandTarget, TcFileTarget
 from pyltc.main import pyltc_entry_point
 from tests.util.iperf_proc import TCPNetPerfTest, UDPNetPerfTest
-from pyltc.plugins.util import parse_branch
+from pyltc.plugins.simnet_util import BranchParser
 
 
 class TcTestTarget(TcTarget):
@@ -85,7 +84,7 @@ class LtcLiveTargetRun(object):
         args = parse_args(orig_argv)
         result = {}
         for group in args.upload:
-            group_dict = parse_branch(group)
+            group_dict = BranchParser(group, upload=True)
             klass = TCPNetPerfTest if group_dict['protocol'] == 'tcp' else UDPNetPerfTest
             bandwidth_dict = self._test_for_port_range(klass, group_dict['range'], self._udp_sendrate)
             result[group] = bandwidth_dict

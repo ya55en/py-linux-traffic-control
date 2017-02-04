@@ -8,17 +8,26 @@ TODO: A larger test suite is comming soon, and it will be machine generated.
 
 import unittest
 import sys
-from os.path import abspath, normpath, dirname, exists, join as pjoin
+from os.path import abspath, normpath, dirname, join as pjoin
 
 REPO_ROOT = normpath(abspath(pjoin(dirname(__file__), "..", "..")))
-#print(REPO_ROOT)
+
 if not REPO_ROOT in sys.path:
     sys.path.append(REPO_ROOT)
 
+from pyltc.core.netdevice import DeviceManager
 from tests.util.base import LtcSimulateTargetRun
 
 
 class TestPyLtcFake(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        DeviceManager.shutdown_module('ifb')
+
+    @classmethod
+    def tearDownClass(cls):
+        DeviceManager.shutdown_module('ifb')
 
     def test_upload_simple_tcp(self):
         fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--upload', 'tcp:dport:9000-9010:512kbit'])

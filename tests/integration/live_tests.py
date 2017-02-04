@@ -18,7 +18,7 @@ if not REPO_ROOT in sys.path:
 
 from pyltc.core import DIR_EGRESS
 from pyltc.main import pyltc_entry_point
-from pyltc.plugins.util import parse_branch
+from pyltc.plugins.simnet_util import BranchParser
 from pyltc.util.rates import convert2bps
 from pyltc.util.counter import Counter
 from tests.util.base import LtcLiveTargetRun
@@ -121,7 +121,7 @@ class TestPyLtcLive(unittest.TestCase):
                     'case: {!r}, tcp_free_rate: {!r}, udp_free_rate: {!r}'.format(case, tcp_free_rate, udp_free_rate)
             free_rate = tcp_free_rate if 'tcp' in case else udp_free_rate
             print('case: {}, free_rate: {}'.format(case, free_rate))
-            branch = parse_branch(case)
+            branch = BranchParser(case, upload=True).as_dict()
             results = live_test.result[case]
             self._check_bandwidth(convert2bps(branch['rate']), results['left_in'], MAX_SHAPED_TOLERANCE)
             self._check_bandwidth(free_rate, results['left_out'], MAX_FREE_RATE_TOLERANCE)

@@ -18,7 +18,7 @@ from parser import ParserError
 from pyltc.util.cmdline import CommandLine
 from pyltc.util.confparser import ConfigParser
 from pyltc.core.netdevice import DeviceManager, NetDevice
-from pyltc.plugins.util import parse_branch
+from pyltc.plugins.simnet_util import BranchParser
 
 #: netem (the qdisc that simulates special network conditions) works for a
 # default of 1000 packets. This was a source of problems and the workaround
@@ -200,16 +200,16 @@ def build_single_port_filter(target, parent, flownode, port, port_dir):
     target.add_filter('u32', parent, 'ip {} {} 0xffff'.format(port_dir, port), flownode)
 
 
-def parse_branch_list(args_list):
+def parse_branch_list(args_list, upload, download):
     branches = list()
     for args_str in args_list:
-        current = parse_branch(args_str)
+        current = BranchParser(args_str, upload=upload, download=download).as_dict()
         branches.append(current)
     return branches
 
 
-def build_tree(target, tcphook, udphook, args_list):
-    branches = parse_branch_list(args_list)
+def build_tree(target, tcphook, udphook, args_list, upload=None, download=None):
+    branches = parse_branch_list(args_list, upload=upload, download=download)
     for branch in branches:
         if branch['range'] == 'all':
             continue
@@ -251,7 +251,8 @@ def determine_all_rates(upload, download):
         if not groups:
             continue
         for group in groups:
-            parsed = parse_branch(group)
+            # parsed = parse_branch(group)
+            parsed = BranchParser(group, dontcare=True).as_dict()  # in this case we don't care for direction
             if parsed['range'] == 'all' and parsed['protocol'] == 'tcp':
                 if tcp_all_rate:
                     raise ParserError("More than one 'all' range detected for the same protocol(tcp).")
@@ -343,7 +344,7 @@ class SimNetPlugin(object):
             if not self._args.clearonly_mode:
                 tcp_all_rate, udp_all_rate = determine_all_rates(self._args.upload, self._args.download)
                 tcp_hook, udp_hook = build_basics(iface.egress, tcp_all_rate, udp_all_rate)
-                build_tree(iface.egress, tcp_hook, udp_hook, self._args.upload)
+                build_tree(iface.egress, tcp_hook, udp_hook, self._args.upload, upload=True)
 
             iface.egress.configure(verbose=self._args.verbose)
             iface.egress.marshal()
@@ -356,7 +357,7 @@ class SimNetPlugin(object):
                 iface.ingress.set_redirect(iface, ifbdev)
                 tcp_all_rate, udp_all_rate = determine_all_rates(self._args.upload, self._args.download)
                 tcp_hook, udp_hook = build_basics(ifbdev.egress, tcp_all_rate, udp_all_rate)
-                build_tree(ifbdev.egress, tcp_hook, udp_hook, self._args.download)
+                build_tree(ifbdev.egress, tcp_hook, udp_hook, self._args.download, download=True)
 
             iface.ingress.configure(verbose=self._args.verbose)
             iface.ingress.marshal()
