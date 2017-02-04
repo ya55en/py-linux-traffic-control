@@ -28,7 +28,8 @@ class DeviceManager(object):
     def load_module(cls, name, **kwargs):
         """Loads given module into kernel. Any kwargs are passed as key=value pairs."""
         kwargs_str = " ".join('{}={}'.format(k, v) for k, v in kwargs.items())
-        CommandLine('modprobe {} {}'.format(name, kwargs_str), sudo=True).execute()
+        cmd = 'modprobe {} {}'.format(name, kwargs_str).rstrip()
+        CommandLine(cmd, sudo=True).execute()
 
     @classmethod
     def remove_module(cls, name):
@@ -57,6 +58,13 @@ class DeviceManager(object):
         assert not cls.device_exists(name), 'Device already exists: {!r}'.format(name)
         module, _ = cls.split_name(name)
         CommandLine("ip link add {} type {}".format(name, module), sudo=True).execute()
+        assert cls.device_exists(name)
+
+    @classmethod
+    def ensure_device(cls, name):
+        if cls.device_exists(name):
+            return
+        cls.device_add(name)
 
     @classmethod
     def device_is_down(cls, name):
@@ -89,6 +97,8 @@ class NetDevice(object):
     def init(cls):
         cls._iface_map = dict()
 
+    # TODO: how about moving this method below to DeviceManager?
+
     @classmethod
     def minimal_nonexisting_name(cls, module):
         """Returns the name of the network device for given module that has lowest
@@ -105,7 +115,7 @@ class NetDevice(object):
         return "{}{}".format(module, num)
 
     @classmethod
-    def get_device(cls, name_or_module):
+    def get_device(cls, name_or_module, target_factory=None):
         """Returns a NetDevice instance that either wraps an existing device
         with given name. The device is added first if it does not yet exist.
         If only the module name is given (e.g. 'ifb') then the first available
@@ -115,7 +125,7 @@ class NetDevice(object):
         :return: NetDevice
         """
         if name_or_module in DeviceManager.all_iface_names():
-            return cls(name_or_module)
+            return cls(name_or_module, target_factory)
         module, num = DeviceManager.split_name(name_or_module)
         if num is None:
             new_name = cls.minimal_nonexisting_name(module)
@@ -123,7 +133,7 @@ class NetDevice(object):
             new_name = "{}{}".format(module, num)
         DeviceManager.load_module(module)
         DeviceManager.device_add(new_name)
-        return cls(new_name)
+        return cls(new_name, target_factory)
 
     def __init__(self, name, target_factory=None):
         assert isinstance(name, str)

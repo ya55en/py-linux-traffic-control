@@ -44,6 +44,7 @@ class TcTarget(ITarget):
 
     def __init__(self, iface, direction):
         assert iface.__class__.__name__ == 'NetDevice', "Expected type NetDevice but got " + type(iface).__name__
+        assert direction in (DIR_EGRESS, DIR_INGRESS)
         self._iface = iface
         self._direction = direction
         self._chain_name = 'ingress' if direction == DIR_INGRESS else 'root'
@@ -124,7 +125,19 @@ class TcTarget(ITarget):
         self._commands.append(cmd1.format(**args))
         self._commands.append(cmd2.format(**args))
 
+
+class PrintingTcTarget(TcTarget):
+    """TcTarget sub-class suitable for demo purposes.
+    On ``marshal()`` simply prints the content of the commands buffer to stdout.
+    (We this way avoid sudo permissions while executing examples and tests.)
+
+    Note that if your TcTarget sub-class is not configurable (as in this case)
+    you can pass the class as a target factory, as it accepts the same
+    arguments (``interface``, ``direction``).
+    """
+
     def marshal(self):
+        print("** PRINTING ONLY: tc", self._direction, "commands **")
         for cmd in self._commands:
             print(cmd)
 

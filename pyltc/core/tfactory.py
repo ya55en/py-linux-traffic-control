@@ -11,7 +11,7 @@ command.
 
 """
 from pyltc.core import DIR_EGRESS, DIR_INGRESS
-from pyltc.core.target import TcCommandTarget, TcFileTarget
+from pyltc.core.target import TcCommandTarget, TcFileTarget, PrintingTcTarget
 
 
 def default_target_factory(iface, direction, callback=None):
@@ -54,3 +54,8 @@ def tc_file_target_factory(iface, direction):
     target = TcFileTarget(iface, direction)
     target.configure(verbose=True)
     return target
+
+
+#: Note that in case a tc target is not configurable via ``target.configure()``,
+#: then the class can sreve as the factory:
+printing_target_factory = PrintingTcTarget

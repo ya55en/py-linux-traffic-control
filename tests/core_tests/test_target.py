@@ -6,7 +6,6 @@ import unittest
 from unittest import mock
 import io
 import time
-from unittest.mock import call
 
 from pyltc.core import DIR_EGRESS, DIR_INGRESS
 from pyltc.core.ltcnode import Qdisc, QdiscClass, Filter
@@ -15,7 +14,9 @@ from pyltc.core.target import TcTarget, TcFileTarget, TcCommandTarget
 
 
 class DummyTcTarget(TcTarget):
-    pass
+    """Dummy traget that does nothing on ``marshal()``."""
+    def marshal(self):
+        pass
 
 
 class TestTcTarget(unittest.TestCase):
@@ -168,12 +169,12 @@ class TestTcCommandTarget(unittest.TestCase):
         target.add_class('htb', rootqd, rate='512kbit', ceil='512kbit')
         target.marshal()
         calls = [
-            call('tc qdisc del dev foo12 root', ignore_errors=True, verbose=False),
-            call().execute(),
-            call('tc qdisc add dev foo12 root handle 1:0 htb', ignore_errors=False, verbose=False),
-            call().execute(),
-            call('tc class add dev foo12 parent 1:0 classid 1:1 htb ceil 512kbit rate 512kbit', ignore_errors=False, verbose=False),
-            call().execute(),
+            mock.call('tc qdisc del dev foo12 root', ignore_errors=True, verbose=False),
+            mock.call().execute(),
+            mock.call('tc qdisc add dev foo12 root handle 1:0 htb', ignore_errors=False, verbose=False),
+            mock.call().execute(),
+            mock.call('tc class add dev foo12 parent 1:0 classid 1:1 htb ceil 512kbit rate 512kbit', ignore_errors=False, verbose=False),
+            mock.call().execute(),
         ]
         fake_command_line.assert_has_calls(calls)
 

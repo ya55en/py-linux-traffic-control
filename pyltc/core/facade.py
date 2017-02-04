@@ -22,7 +22,7 @@ class TrafficControl(object):
 
     @classmethod
     def get_interface(cls, ifname, target_factory=None):
-        return NetDevice.get_device(ifname, target_factory=None)
+        return NetDevice.get_device(ifname, target_factory)
 
     @classmethod
     def get_plugin(cls, name, target_factory=None):
