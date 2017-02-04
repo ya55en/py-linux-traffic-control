@@ -46,6 +46,23 @@ class TestPyLtcFake(unittest.TestCase):
         ]
         self.assertEqual(expected, fake_test.result)
 
+    def test_upload_simple_tcp_rport(self):
+        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--upload', 'tcp:rport:9000-9010:512kbit'])
+        fake_test.run()
+        expected = [
+            'tc qdisc del dev lo root',
+            'tc qdisc add dev lo root handle 1:0 htb',
+            'tc class add dev lo parent 1:0 classid 1:1 htb rate 15gbit',
+            'tc class add dev lo parent 1:0 classid 1:2 htb rate 15gbit',
+            'tc filter add dev lo parent 1:0 protocol ip prio 1 u32 match ip protocol 6 0xff flowid 1:1',
+            'tc filter add dev lo parent 1:0 protocol ip prio 2 u32 match ip protocol 17 0xff flowid 1:2',
+            'tc qdisc add dev lo parent 1:1 handle 2:0 htb',
+            'tc qdisc add dev lo parent 1:2 handle 3:0 htb',
+            'tc class add dev lo parent 2:0 classid 2:1 htb rate 512kbit',
+            'tc filter add dev lo parent 2:0 protocol ip prio 1 basic match "cmp(u16 at 2 layer transport gt 8999) and cmp(u16 at 2 layer transport lt 9011)" flowid 2:1'
+        ]
+        self.assertEqual(expected, fake_test.result)
+
     def test_upload_single_port_tcp(self):
         fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--upload', 'tcp:dport:9100:1mbit'])
         fake_test.run()
@@ -139,6 +156,26 @@ class TestPyLtcFake(unittest.TestCase):
 
     def test_download_simple_tcp(self):
         fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--download', 'tcp:dport:9400-9410:1mbit'])
+        fake_test.run()
+        expected = [
+            'tc qdisc del dev lo ingress',
+            'tc qdisc add dev lo handle ffff:0 ingress',
+            'tc filter add dev lo parent ffff:0 protocol ip u32 match u32 0 0 action mirred egress redirect dev ifb0',
+            'tc qdisc del dev ifb0 root',
+            'tc qdisc add dev ifb0 root handle 1:0 htb',
+            'tc class add dev ifb0 parent 1:0 classid 1:1 htb rate 15gbit',
+            'tc class add dev ifb0 parent 1:0 classid 1:2 htb rate 15gbit',
+            'tc filter add dev ifb0 parent 1:0 protocol ip prio 1 u32 match ip protocol 6 0xff flowid 1:1',
+            'tc filter add dev ifb0 parent 1:0 protocol ip prio 2 u32 match ip protocol 17 0xff flowid 1:2',
+            'tc qdisc add dev ifb0 parent 1:1 handle 2:0 htb',
+            'tc qdisc add dev ifb0 parent 1:2 handle 3:0 htb',
+            'tc class add dev ifb0 parent 2:0 classid 2:1 htb rate 1mbit',
+            'tc filter add dev ifb0 parent 2:0 protocol ip prio 1 basic match "cmp(u16 at 2 layer transport gt 9399) and cmp(u16 at 2 layer transport lt 9411)" flowid 2:1'
+        ]
+        self.assertEqual(expected, fake_test.result)
+
+    def test_download_simple_tcp_lport(self):
+        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--download', 'tcp:lport:9400-9410:1mbit'])
         fake_test.run()
         expected = [
             'tc qdisc del dev lo ingress',

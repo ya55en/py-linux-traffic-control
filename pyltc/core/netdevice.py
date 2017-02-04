@@ -18,12 +18,7 @@ class DeviceManager(object):
 
     @classmethod
     def all_iface_names(cls, filter=None):
-        print("all_iface_names(filter={!r}) called".format(filter))
-        result = []
-        for filename in os.listdir(cls.SYS_CLASS_NET):
-            if not filter or filter in filename:
-                result.append(filename)
-        return result
+        return [dev for dev in os.listdir(cls.SYS_CLASS_NET) if not filter or filter in dev]
 
     @classmethod
     def load_module(cls, name, **kwargs):

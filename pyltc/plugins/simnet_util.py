@@ -51,7 +51,6 @@ class BranchParser(object):
             return porttype
 
         if porttype in ('lport', 'rport'):
-            assert not self._dontcare, "dontcare flag NOT compatible with ('lport', 'rport')"
             if porttype == 'lport':
                 return 'sport' if self._upload else 'dport'
             if porttype == 'rport':
