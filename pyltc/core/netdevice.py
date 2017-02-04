@@ -50,6 +50,21 @@ class DeviceManager(object):
         return module, int(num) if num else None
 
     @classmethod
+    def minimal_nonexisting_name(cls, module):
+        """Returns the name of the network device for given module that has lowest
+        sequence number.
+
+        :param module: string - the name of the network device module (e.g. 'ifb')
+        :return: string - the name of the device with lowest number (e.g. 'ifb0')
+        """
+        existing_names = cls.all_iface_names(module)
+        if not existing_names:
+            return "{}0".format(module)
+        lst = sorted([cls.split_name(name) for name in existing_names], key=lambda tpl: tpl[1])
+        num = lst[-1][1] + 1
+        return "{}{}".format(module, num)
+
+    @classmethod
     def device_exists(cls, name):
         return name in cls.all_iface_names()
 
@@ -97,25 +112,8 @@ class NetDevice(object):
     def init(cls):
         cls._iface_map = dict()
 
-    # TODO: how about moving this method below to DeviceManager?
-
     @classmethod
-    def minimal_nonexisting_name(cls, module):
-        """Returns the name of the network device for given module that has lowest
-        sequence number.
-
-        :param module: string - the name of the network device module (e.g. 'ifb')
-        :return: string - the name of the device with lowest number (e.g. 'ifb0')
-        """
-        existing_names = DeviceManager.all_iface_names(module)
-        if not existing_names:
-            return "{}0".format(module)
-        lst = sorted([DeviceManager.split_name(name) for name in existing_names], key=lambda tpl: tpl[1])
-        num = lst[-1][1] + 1
-        return "{}{}".format(module, num)
-
-    @classmethod
-    def get_device(cls, name_or_module, target_factory=None):
+    def get_device(cls, name_or_module, target_factory=default_target_factory):
         """Returns a NetDevice instance that either wraps an existing device
         with given name. The device is added first if it does not yet exist.
         If only the module name is given (e.g. 'ifb') then the first available
@@ -124,13 +122,22 @@ class NetDevice(object):
         :param name_or_module: string - device name or module name
         :return: NetDevice
         """
-        if name_or_module in DeviceManager.all_iface_names():
-            return cls(name_or_module, target_factory)
+        if name_or_module is None:
+            return MagicMock()  # return a Null object when name is none
+
+        if name_or_module in cls._iface_map:
+            return cls._iface_map[name_or_module]  # return existing object if found
+
+        if DeviceManager.device_exists(name_or_module):
+            return cls(name_or_module, target_factory)  # create and return new instance if device exists
+
+        # create a new device and return a new instance on success:
         module, num = DeviceManager.split_name(name_or_module)
         if num is None:
-            new_name = cls.minimal_nonexisting_name(module)
+            new_name = DeviceManager.minimal_nonexisting_name(module)
         else:
             new_name = "{}{}".format(module, num)
+
         DeviceManager.load_module(module)
         DeviceManager.device_add(new_name)
         return cls(new_name, target_factory)
@@ -143,32 +150,6 @@ class NetDevice(object):
         self._egress_chain = target_factory(self, DIR_EGRESS)
         self._ingress_chain = target_factory(self, DIR_INGRESS)
         self._ifbdev = None
-
-    @classmethod
-    def new_instance(cls, name, target_factory=None):
-        """Creates and returns a new NetDevice instance. Ingress and egress builder chains will be
-        created using given target_factory or the default one if target_factory is not provided.
-
-        :param name: string - the name of the device as known by the kernel (e.g. 'eth0')
-               If ``name`` is ``None``, a "Null object" will be returned that does
-               nothing on calling any of its methods.
-        :param target_factory: callable returning an ``ITarget`` - the factory to be used
-               to create the Ingress and egress chain builders
-        :return: NetDevice - the network device object for this device name
-        """
-        if name is None:
-            return MagicMock()
-        if target_factory is None:
-            target_factory = default_target_factory
-        return cls(name, target_factory)
-
-    @classmethod
-    def get_interface(cls, ifname, target_factory=None):
-        try:
-            return cls._iface_map[ifname]
-        except KeyError:
-            cls._iface_map[ifname] = iface = cls.new_instance(ifname, target_factory)
-            return iface
 
     @property
     def name(self):

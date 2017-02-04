@@ -333,10 +333,10 @@ class SimNetPlugin(object):
 
     def marshal(self):
         """Applies setup recipe instruction already built."""
-        # Note that TrafficControl.get_interface() returns a "Null" NetDevice object if device name is None
+        # Note that NetDevice.get_device() returns a "Null" NetDevice object if device name is None
         #print(self._args)
-        iface = NetDevice.get_interface(self._args.interface, self._target_factory)
-        ifbdev = NetDevice.get_interface(self._args.ifbdevice, self._target_factory)
+        iface = NetDevice.get_device(self._args.interface, self._target_factory)
+        ifbdev = NetDevice.get_device(self._args.ifbdevice, self._target_factory)
 
         if self._args.upload:
             if self._args.clear:
