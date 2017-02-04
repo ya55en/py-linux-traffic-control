@@ -18,6 +18,7 @@ class DeviceManager(object):
 
     @classmethod
     def all_iface_names(cls, filter=None):
+        print("all_iface_names(filter={!r}) called".format(filter))
         result = []
         for filename in os.listdir(cls.SYS_CLASS_NET):
             if not filter or filter in filename:
@@ -139,7 +140,7 @@ class NetDevice(object):
             new_name = "{}{}".format(module, num)
 
         DeviceManager.load_module(module)
-        DeviceManager.device_add(new_name)
+        DeviceManager.ensure_device(new_name)  # load_module() may have created the device
         return cls(new_name, target_factory)
 
     def __init__(self, name, target_factory=None):

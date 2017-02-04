@@ -13,6 +13,10 @@ class MockedModuleTest(unittest.TestCase):
     """Tests DeviceManager and NetDevice without actually creating or removing
     devices. Can be run w/o root access level."""
 
+    @classmethod
+    def setUpClass(cls):
+        NetDevice.init()
+
     def test_split_name(self):
         self.assertEqual(('dummy', 0), DeviceManager.split_name('dummy0'))
         self.assertEqual(('ifb', 883), DeviceManager.split_name('ifb883'))
@@ -21,14 +25,14 @@ class MockedModuleTest(unittest.TestCase):
     @mock.patch('pyltc.core.netdevice.os.listdir')
     def test_minimal_nonexisting_name_case1(self, fake_listdir):
         fake_listdir.return_value = ['eth0']
-        new_name = NetDevice.minimal_nonexisting_name('dummy')
+        new_name = DeviceManager.minimal_nonexisting_name('dummy')
         self.assertEqual('dummy0', new_name)
         self.assertEqual(1, fake_listdir.call_count)
 
     @mock.patch('pyltc.core.netdevice.os.listdir')
     def test_minimal_nonexisting_name_case2(self, fake_listdir):
         fake_listdir.return_value = ['dummy1', 'eth0', 'dummy0']
-        new_name = NetDevice.minimal_nonexisting_name('dummy')
+        new_name = DeviceManager.minimal_nonexisting_name('dummy')
         self.assertEqual('dummy2', new_name)
         self.assertEqual(1, fake_listdir.call_count)
 
@@ -50,7 +54,7 @@ class MockedModuleTest(unittest.TestCase):
         fake_listdir.return_value = ['eth0']
         dev = NetDevice.get_device('ifb')
         self.assertEqual('ifb0', dev.name)
-        self.assertEqual(2, fake_listdir.call_count)
+        self.assertEqual(3, fake_listdir.call_count)
         fake_load_module.assert_called_once_with('ifb')
         fake_device_add.assert_called_once_with('ifb0')
 
