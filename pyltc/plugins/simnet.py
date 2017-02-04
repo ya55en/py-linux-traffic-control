@@ -277,13 +277,22 @@ class SimNetPlugin(object):
                to create the target chanin builders with
         """
         self._target_factory = target_factory
+
         if args is None:
             self._args = SimpleNamespace()
-            self.configure()
+
+            # the default values must match the argparse defaults for these arguments
+            self.configure(clear=False, verbose=False, interface='lo', ifbdevice=None)
+            self._args.upload = list()
+            self._args.download = list()
+
+            #: intrenal helper flag which indicates input that requres clearing the chain(s) but no qdisc setup
+            self._args.clearonly_mode = False
+
         else:
             self._args = args
 
-    def configure(self, clear=False, verbose=False, interface='lo', ifbdevice=None):
+    def configure(self, clear='<undef>', verbose='<undef>', interface='<undef>', ifbdevice='<undef>'):
         """Configures the general options given as named arguments.
 
         :param clear: bool - whether to generate a clearing command at the command sequence start
@@ -291,13 +300,10 @@ class SimNetPlugin(object):
         :param interface: string - the network device name
         :param ifbdevice: string - the ifb network device name, if any
         """
-        self._args.clear = clear
-        self._args.verbose = verbose
-        self._args.interface = interface
-        self._args.ifbdevice = ifbdevice
-        self._args.upload = list()
-        self._args.download = list()
-        self._args.clearonly_mode = False
+        self._args.clear = clear if clear != '<undef>' else self._args.clear
+        self._args.verbose = verbose if verbose != '<undef>' else self._args.verbose
+        self._args.interface = interface if interface != '<undef>' else self._args.interface
+        self._args.ifbdevice = ifbdevice if ifbdevice != '<undef>' else self._args.ifbdevice
 
     def setup(self, upload=None, download=None, protocol=None, porttype=None, range=None,
               rate=None, jitter=None):
@@ -357,6 +363,11 @@ class SimNetPlugin(object):
             ifbdev.egress.configure(verbose=self._args.verbose)
             ifbdev.egress.marshal()
 
+    def load_profile(self, profile_name, config_file=None):
+        profile_args = parse_ini_file(profile_name, config_file, self._args.verbose)
+        old_args_dict = self._args.__dict__.copy()
+        self._args = parse_args(profile_args, old_args_dict)
+
 
 def plugin_main(argv, target_factory):
     if not argv:
@@ -366,10 +377,12 @@ def plugin_main(argv, target_factory):
     if args.verbose:
         print("Args:", str(args).lstrip("Namespace"))
 
-    if 'profile_name' in args:
-        profile_args = parse_ini_file(args.profile_name, args.config, args.verbose)
-        old_args_dict = args.__dict__.copy()
-        args = parse_args(profile_args, old_args_dict)
-
     simnet = SimNetPlugin(args, target_factory)
+    if 'profile_name' in args:
+        simnet.load_profile(args.profile_name, args.config)
+        # profile_args = parse_ini_file(args.profile_name, args.config, args.verbose)
+        # old_args_dict = args.__dict__.copy()
+        # args = parse_args(profile_args, old_args_dict)
+
+    #simnet = SimNetPlugin(args, target_factory)
     simnet.marshal()
