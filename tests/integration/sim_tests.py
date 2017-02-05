@@ -24,6 +24,7 @@ class TestPyLtcFake(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         DeviceManager.shutdown_module('ifb')
+        assert not DeviceManager.all_iface_names('ifb'), 'Unreachable'
 
     @classmethod
     def tearDownClass(cls):

@@ -36,38 +36,60 @@ class MockedModuleTest(unittest.TestCase):
         self.assertEqual('dummy2', new_name)
         self.assertEqual(1, fake_listdir.call_count)
 
-    @mock.patch('pyltc.core.netdevice.DeviceManager.device_add')
+    @mock.patch('pyltc.core.netdevice.os.listdir')
+    def test_maximal_existing_name_case1(self, fake_listdir):
+        fake_listdir.return_value = ['eth0']
+        new_name = DeviceManager.maximal_existing_name('dummy')
+        self.assertEqual('dummy0', new_name)
+        self.assertEqual(1, fake_listdir.call_count)
+
+    @mock.patch('pyltc.core.netdevice.os.listdir')
+    def test_maximal_existing_name_case2(self, fake_listdir):
+        fake_listdir.return_value = ['eth0', 'dummy0']
+        new_name = DeviceManager.maximal_existing_name('dummy')
+        self.assertEqual('dummy0', new_name)
+        self.assertEqual(1, fake_listdir.call_count)
+
+    @mock.patch('pyltc.core.netdevice.os.listdir')
+    def test_maximal_existing_name_case3(self, fake_listdir):
+        fake_listdir.return_value = ['dummy1', 'eth0', 'dummy0']
+        new_name = DeviceManager.maximal_existing_name('dummy')
+        self.assertEqual('dummy1', new_name)
+        self.assertEqual(1, fake_listdir.call_count)
+
+    @mock.patch('pyltc.core.netdevice.DeviceManager.ensure_device')
     @mock.patch('pyltc.core.netdevice.DeviceManager.load_module')
     @mock.patch('pyltc.core.netdevice.os.listdir')
-    def test_get_device_device_exists(self, fake_listdir, fake_load_module, fake_device_add):
+    def test_get_device_device_exists(self, fake_listdir, fake_load_module, fake_ensure_device):
         fake_listdir.return_value = ['ifb0', 'eth0']
         dev = NetDevice.get_device('ifb0')
         self.assertEqual('ifb0', dev.name)
         self.assertEqual(1, fake_listdir.call_count)
         fake_load_module.assert_not_called()
-        fake_device_add.assert_not_called()
+        fake_ensure_device.assert_not_called()
 
-    @mock.patch('pyltc.core.netdevice.DeviceManager.device_add')
+    @mock.patch('pyltc.core.netdevice.DeviceManager.ensure_device')
     @mock.patch('pyltc.core.netdevice.DeviceManager.load_module')
     @mock.patch('pyltc.core.netdevice.os.listdir')
-    def test_get_device_no_such_devices(self, fake_listdir, fake_load_module, fake_device_add):
+    def test_get_device_no_such_devices(self, fake_listdir, fake_load_module, fake_ensure_device):
         fake_listdir.return_value = ['eth0']
         dev = NetDevice.get_device('ifb')
         self.assertEqual('ifb0', dev.name)
-        self.assertEqual(3, fake_listdir.call_count)
-        fake_load_module.assert_called_once_with('ifb')
-        fake_device_add.assert_called_once_with('ifb0')
+        self.assertEqual(2, fake_listdir.call_count)
+        fake_load_module.assert_called_once_with('ifb', numifbs=0)
+        fake_ensure_device.assert_called_once_with('ifb0')
 
-    @mock.patch('pyltc.core.netdevice.DeviceManager.device_add')
+    @mock.patch('pyltc.core.netdevice.DeviceManager.ensure_device')
     @mock.patch('pyltc.core.netdevice.DeviceManager.load_module')
-    @mock.patch('pyltc.core.netdevice.DeviceManager.all_iface_names')
-    def test_get_device_two_such_devices(self, fake_all_iface_names, fake_load_module, fake_device_add):
-        fake_all_iface_names.return_value = ['ifb0', 'eth0', 'ifb1']
+    @mock.patch('pyltc.core.netdevice.os.listdir')
+    def test_get_device_two_such_devices(self, fake_os_listdir, fake_load_module, fake_ensure_device):
+        fake_os_listdir.return_value = ['ifb0', 'eth0', 'ifb1']
         dev = NetDevice.get_device('ifb')
-        self.assertEqual('ifb2', dev.name)
-        fake_all_iface_names.assert_has_calls([call(), call('ifb')])
-        fake_load_module.assert_called_once_with('ifb')
-        fake_device_add.assert_called_once_with('ifb2')
+        self.assertEqual('ifb1', dev.name)
+        fake_os_listdir.assert_has_calls([call('/sys/class/net'), call('/sys/class/net')])
+        fake_load_module.assert_called_once_with('ifb', numifbs=0)
+        fake_ensure_device.assert_called_once_with('ifb1')
+        fake_ensure_device.assert_has_calls([])
 
 
 class LiveModuleTest(unittest.TestCase):

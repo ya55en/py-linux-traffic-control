@@ -17,7 +17,7 @@ from pyltc.conf import CONFIG_PATHS, __build__, __version__
 from parser import ParserError
 from pyltc.util.cmdline import CommandLine
 from pyltc.util.confparser import ConfigParser
-from pyltc.core.netdevice import DeviceManager, NetDevice
+from pyltc.core.netdevice import DeviceManager, NetDevice, NetDeviceNotFound
 from pyltc.plugins.simnet_util import BranchParser
 
 #: netem (the qdisc that simulates special network conditions) works for a
@@ -64,34 +64,36 @@ def parse_ini_file(profile, conf_file, verbose):
     return new_args
 
 
-def determine_ifb_device(ifbdevice_arg, verbose_arg, parser):
-    """Returns the name of the ifb device while handling the '--download' command line
-    argument (denoting ingress traffic control). Reuses an existing device if specified
-    and available or create a new device as necessary.
-    """
-    if not ifbdevice_arg:
-        return None
-    available_ifbs = sorted(DeviceManager.all_iface_names(filter='ifb'))
-    if ifbdevice_arg in available_ifbs:
-        return ifbdevice_arg  # using an existing and preconfigured ifb device
-    if ifbdevice_arg != 'setup':
-        parser.error(
-            "ifb device not found: {!r}. Leave '--ifbdevice' switch empty to set up a new one.".format(ifbdevice_arg))
-        raise RuntimeError('UNREACHABLE')
-
-    # we need to set up a new device
-    if not available_ifbs:
-        CommandLine('modprobe ifb numifbs=0', verbose=verbose_arg, sudo=True).execute()
-        CommandLine('ip link add ifb0 type ifb', verbose=verbose_arg, sudo=True).execute()
-        CommandLine('ip link set dev ifb0 up', verbose=verbose_arg, sudo=True).execute()
-        available_ifbs = sorted(DeviceManager.all_iface_names(filter='ifb'))
-        assert len(available_ifbs) == 1, "expected available_ifbs to have single device, got {!r}" \
-                                          .format(available_ifbs)
-
-    ifbnum = [int(el.lstrip('ifb')) for el in available_ifbs][-1]  # + 1
-    ifbdev = "ifb{}".format(ifbnum)
-    CommandLine('ip link set dev {} up'.format(ifbdev), verbose=verbose_arg, sudo=True).execute()
-    return ifbdev
+# def determine_ifb_device(ifbdevice_arg, verbose_arg, parser):
+#     """Returns the name of the ifb device while handling the '--download' command line
+#     argument (denoting ingress traffic control). Reuses an existing device if specified
+#     and available or create a new device as necessary.
+#     """
+#     if not ifbdevice_arg:
+#         return None
+#
+#     available_ifbs = sorted(DeviceManager.all_iface_names(filter='ifb'))
+#     if ifbdevice_arg in available_ifbs:
+#         return ifbdevice_arg  # using an existing and preconfigured ifb device
+#
+#     if ifbdevice_arg != 'setup':
+#         parser.error(
+#             "ifb device not found: {!r}. Leave '--ifbdevice' switch empty to set up a new one.".format(ifbdevice_arg))
+#         raise RuntimeError('UNREACHABLE')
+#
+#     # we need to set up a new device
+#     if not available_ifbs:
+#         CommandLine('modprobe ifb numifbs=0', verbose=verbose_arg, sudo=True).execute()
+#         CommandLine('ip link add ifb0 type ifb', verbose=verbose_arg, sudo=True).execute()
+#         CommandLine('ip link set dev ifb0 up', verbose=verbose_arg, sudo=True).execute()
+#         available_ifbs = sorted(DeviceManager.all_iface_names(filter='ifb'))
+#         assert len(available_ifbs) == 1, "expected available_ifbs to have single device, got {!r}" \
+#                                           .format(available_ifbs)
+#
+#     ifbnum = [int(el.lstrip('ifb')) for el in available_ifbs][-1]  # + 1
+#     ifbdev = "ifb{}".format(ifbnum)
+#     CommandLine('ip link set dev {} up'.format(ifbdev), verbose=verbose_arg, sudo=True).execute()
+#     return ifbdev
 
 
 def handle_version_arg(argv):
@@ -110,14 +112,15 @@ def handle_version_arg(argv):
 def parse_args(argv, old_args_dict=None):
     """Parses given list of command line arguments using `argparse.ArgumentParser`
        and returns the parsed namespace."""
+    # old_args_dict not None when we are called with profile; then it contains original profile args.
     old_args_dict = old_args_dict if old_args_dict else dict()
-    parser = argparse.ArgumentParser(epilog="Use '%(prog)s subcommand -h/--help' to see the specific options.")
+    parser = argparse.ArgumentParser(epilog="Use '%(prog)s sub-command -h/--help' to see the specific options.")
     if not argv:
         parser.error('Insufficient arguments. Try -h/--help.')
     if 'no_conf_file' in argv:
         parser.error('Cannot find configuration file - looked up in {}.'.format(CONFIG_PATHS))
     if 'no_such_profile' in argv:
-        parser.error('No such profile found: {}'.format(argv[1]))
+        parser.error('Config profile NOT found: {}'.format(argv[1]))
     parser.add_argument("-V", "--version", action='store_true', help="show program version and exit")
 
     subparsers = parser.add_subparsers(dest="subparser")
@@ -137,17 +140,17 @@ def parse_args(argv, old_args_dict=None):
                             help="the network device name (default: %(default)s)")
     parser_cmd.add_argument("-c", "--clear", action='store_true', required=False, default=False,
                             help="issue a chain clearing clause before the actual recipe (default: %(default)s)")
-    parser_cmd.add_argument("-b", "--ifbdevice", nargs='?', const='setup', default=None,
+    parser_cmd.add_argument("-b", "--ifbdevice", nargs='?', const='ifb', default=None,
                             help="for download (ingress) control, specifies which ifb device to use."
                                  " If not present, a new device will be set up and used. (default: %(default)s)")
-    parser_cmd.add_argument("-u", "--upload", default=None, nargs='+', type=str,
+    parser_cmd.add_argument("-u", "--upload", default=None, nargs='*', type=str,
                             metavar='PROTOCOL:PORTTYPE:RANGE:RATE:JITTER',
                             help="define discipline classes for upload (egress) port range. Example:"
                                  " tcp:dport:16000-24000:512kbit:5%%. PROTOCOL, PORTTYPE and RANGE are required."
                                  " RATE and/or JITTER must be present. PROTOCOL is one of 'tcp', 'udp'."
                                  " PORTTYPE is one of 'sport', 'dport'. RANGE is a dash-delimited range of ports"
                                  " MINPORT-MAXPORT (inclusive), a single port or the keyword 'all'.")
-    parser_cmd.add_argument("-d", "--download", default=None, nargs='+', type=str,
+    parser_cmd.add_argument("-d", "--download", default=None, nargs='*', type=str,
                             metavar='PROTOCOL:PORTTYPE:RANGE:RATE:JITTER',
                             help="define discipline class(es) for download (ingress) port range(s). Example:"
                                  " tcp:dport:16000-24000:512kbit:5%%. PROTOCOL, PORTTYPE and RANGE are required."
@@ -162,20 +165,32 @@ def parse_args(argv, old_args_dict=None):
         parser.error('No action requested.')
 
     if args.subparser == 'tc':
-        args.clearonly_mode = args.clear and not (args.upload or args.download)
-        if args.clearonly_mode:
-            # artificially made to be "not False":
-            args.upload = [':dummy:']
-            args.download = [':dummy:']
+
+        if args.clear and args.upload is None and args.download is None:
+            args.upload = []
+            args.download = []
+
+        # if args.clearonly_mode:
+        #     artificially made to be "not False":
+        #     args.upload = [':fake:']
+        #     args.download = [':fake']
 
         if not (args.upload or args.download or args.clear):
-            parser.error('No action requested: add at least one of --upload, --download, --clear.')
+            parser.error('no action requested: add at least one of --upload, --download, --clear.')
 
-        if not args.ifbdevice and (args.download or args.clearonly_mode):
-            args.ifbdevice = 'setup'
-        args.ifbdevice = determine_ifb_device(args.ifbdevice, args.verbose, parser)
-    else:
-        args.ifbdevice = None
+        # if args.ifbdevice and args.download is None:
+        #     parser.error('cannot set ifb device without download setup.')
+
+        # if not args.ifbdevice and (args.download or args.clearonly_mode):
+        #     args.ifbdevice = 'setup'
+        # args.ifbdevice = determine_ifb_device(args.ifbdevice, args.verbose, parser)
+
+    # else:
+    #     args.ifbdevice = None
+
+    if not DeviceManager.device_exists(args.interface):
+        raise ParserError("device NOT found: {!s}".format(args.interface))
+
     return args
 
 
@@ -255,11 +270,11 @@ def determine_all_rates(upload, download):
             parsed = BranchParser(group, dontcare=True).as_dict()  # in this case we don't care for direction
             if parsed['range'] == 'all' and parsed['protocol'] == 'tcp':
                 if tcp_all_rate:
-                    raise ParserError("More than one 'all' range detected for the same protocol(tcp).")
+                    raise ParserError("More than one 'all' range detected for the same protocol (tcp).")
                 tcp_all_rate = parsed['rate']
             elif parsed['range'] == 'all' and parsed['protocol'] == 'udp':
                 if udp_all_rate:
-                    raise ParserError("More than one 'all' range detected for the same protocol(udp).")
+                    raise ParserError("More than one 'all' range detected for the same protocol (udp).")
                 udp_all_rate = parsed['rate']
     return tcp_all_rate, udp_all_rate
 
@@ -336,12 +351,17 @@ class SimNetPlugin(object):
         # Note that NetDevice.get_device() returns a "Null" NetDevice object if device name is None
         #print(self._args)
         iface = NetDevice.get_device(self._args.interface, self._target_factory)
+
+        # ifbdev = 'ifb' if self._args.download and not self._args.ifbdevice else None
+
+        if (self._args.download is not None) and (not self._args.ifbdevice):
+            self._args.ifbdevice = 'ifb'
         ifbdev = NetDevice.get_device(self._args.ifbdevice, self._target_factory)
 
-        if self._args.upload:
+        if self._args.upload is not None:
             if self._args.clear:
                 iface.egress.clear()
-            if not self._args.clearonly_mode:
+            if self._args.upload:  # not self._args.clearonly_mode:
                 tcp_all_rate, udp_all_rate = determine_all_rates(self._args.upload, self._args.download)
                 tcp_hook, udp_hook = build_basics(iface.egress, tcp_all_rate, udp_all_rate)
                 build_tree(iface.egress, tcp_hook, udp_hook, self._args.upload, upload=True)
@@ -349,11 +369,11 @@ class SimNetPlugin(object):
             iface.egress.configure(verbose=self._args.verbose)
             iface.egress.marshal()
 
-        if self._args.download:
+        if self._args.download is not None:
             if self._args.clear:
                 iface.ingress.clear()
                 ifbdev.egress.clear()
-            if not self._args.clearonly_mode:
+            if self._args.download: # not self._args.clearonly_mode:
                 iface.ingress.set_redirect(iface, ifbdev)
                 tcp_all_rate, udp_all_rate = determine_all_rates(self._args.upload, self._args.download)
                 tcp_hook, udp_hook = build_basics(ifbdev.egress, tcp_all_rate, udp_all_rate)
@@ -381,9 +401,5 @@ def plugin_main(argv, target_factory):
     simnet = SimNetPlugin(args, target_factory)
     if 'profile_name' in args:
         simnet.load_profile(args.profile_name, args.config)
-        # profile_args = parse_ini_file(args.profile_name, args.config, args.verbose)
-        # old_args_dict = args.__dict__.copy()
-        # args = parse_args(profile_args, old_args_dict)
 
-    #simnet = SimNetPlugin(args, target_factory)
     simnet.marshal()

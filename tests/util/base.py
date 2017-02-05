@@ -2,7 +2,6 @@
 Base test classes for PyLTC integration testing.
 
 """
-
 from pyltc.plugins.simnet import parse_args
 from pyltc.core.target import TcTarget, TcCommandTarget, TcFileTarget
 from pyltc.main import pyltc_entry_point
@@ -39,6 +38,8 @@ class LtcSimulateTargetRun(object):
 
     def run(self):
         pyltc_entry_point(self._argv, self.test_target_factory)
+        from pyltc.core.netdevice import DeviceManager
+        assert 'ifb1' not in DeviceManager.all_iface_names('ifb'), DeviceManager.all_iface_names('ifb')
 
     @property
     def result(self):

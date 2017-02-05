@@ -34,3 +34,7 @@ def pyltc_entry_point(argv=None, target_factory=None):
     except ParserError as err:
         print("ltc.py: error:", err, file=sys.stderr)
         return 2
+
+
+if __name__ == '__main__':
+    pyltc_entry_point(['tc', '-c', '--interface', 'lo', '-v', '--upload'])

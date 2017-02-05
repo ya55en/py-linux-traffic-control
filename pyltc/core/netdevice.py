@@ -3,6 +3,7 @@ Network device management classes.
 
 """
 import os
+# from os import listdir as os_listdir  # need it this way for mock.patch in unit tests
 from os.path import join as pjoin
 from unittest.mock import MagicMock
 
@@ -61,6 +62,21 @@ class DeviceManager(object):
         return "{}{}".format(module, num)
 
     @classmethod
+    def maximal_existing_name(cls, module):
+        """Returns the name of the existing network device for given module having highest
+        sequence number. If no device exists, returns the zero indexed decice.
+
+        :param module: string - the name of the network device module (e.g. 'ifb')
+        :return: string - the name of the device with lowest number (e.g. 'ifb0')
+        """
+        existing_names = cls.all_iface_names(module)
+        if not existing_names:
+            return "{}0".format(module)
+        lst = sorted([cls.split_name(name) for name in existing_names], key=lambda tpl: tpl[1])
+        num = lst[-1][1]
+        return "{}{}".format(module, num)
+
+    @classmethod
     def device_exists(cls, name):
         return name in cls.all_iface_names()
 
@@ -99,8 +115,14 @@ class DeviceManager(object):
         CommandLine("ip link set dev {} down".format(name), sudo=True).execute()
 
 
+class NetDeviceNotFound(Exception):
+    pass
+
+
 class NetDevice(object):
     """Network Device instance representation class."""
+
+    LOADABLE_DEV_MODULES = ('ifb', 'dummy')
 
     _iface_map = None
 
@@ -119,24 +141,34 @@ class NetDevice(object):
         :return: NetDevice
         """
         if name_or_module is None:
-            return MagicMock()  # return a Null object when name is none
+            return MagicMock()  # return a Null object when name is None
 
         if name_or_module in cls._iface_map:
             return cls._iface_map[name_or_module]  # return existing object if found
 
         if DeviceManager.device_exists(name_or_module):
-            return cls(name_or_module, target_factory)  # create and return new instance if device exists
+            # create and return new instance if device exists:
+            dev = cls(name_or_module, target_factory)
+            cls._iface_map[name_or_module] = dev
+            return dev
 
         # create a new device and return a new instance on success:
         module, num = DeviceManager.split_name(name_or_module)
+
+        if module not in cls.LOADABLE_DEV_MODULES:   # If module not one of LOADABLE_DEV_MODULES -
+            raise NetDeviceNotFound(name_or_module)  # we raise NetDeviceNotFound as expect it to exist
+
         if num is None:
-            new_name = DeviceManager.minimal_nonexisting_name(module)
+            new_name = DeviceManager.maximal_existing_name(module)
         else:
             new_name = "{}{}".format(module, num)
 
-        DeviceManager.load_module(module)
+        # create and return new instance:
+        DeviceManager.load_module(module, **{'num{}s'.format(module): 0})
         DeviceManager.ensure_device(new_name)  # load_module() may have created the device
-        return cls(new_name, target_factory)
+        dev = cls(new_name, target_factory)
+        cls._iface_map[new_name] = dev
+        return dev
 
     def __init__(self, name, target_factory=None):
         assert isinstance(name, str)
@@ -181,20 +213,20 @@ class NetDevice(object):
         DeviceManager.device_down(self._name)
 
 
-class IfbDevice(NetDevice):
-
-    @classmethod
-    def load_module(cls):
-        DeviceManager.load_module('ifb')
-
-    @classmethod
-    def remove_module(cls):
-        DeviceManager.remove_module('ifb')
-
-    @classmethod
-    def shutdown_module(cls):
-        DeviceManager.shutdown_module('ifb')
-
-    @classmethod
-    def get_device(cls, name_or_module=None):
-        return NetDevice.get_device(name_or_module or 'ifb')
+# class IfbDevice(NetDevice):
+#
+#     @classmethod
+#     def load_module(cls):
+#         DeviceManager.load_module('ifb')
+#
+#     @classmethod
+#     def remove_module(cls):
+#         DeviceManager.remove_module('ifb')
+#
+#     @classmethod
+#     def shutdown_module(cls):
+#         DeviceManager.shutdown_module('ifb')
+#
+#     @classmethod
+#     def get_device(cls, name_or_module=None):
+#         return NetDevice.get_device(name_or_module or 'ifb')
