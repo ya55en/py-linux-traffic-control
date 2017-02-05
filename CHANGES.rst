@@ -2,6 +2,14 @@
 py-linux-traffic-control changes
 =================================
 
+v. 0.4.6 (2017-01-24)
+--------------------------
+- Added support for lport/rport port type;
+- Added support for easily loading a simnet profile programmatically;
+- Provided working examples on using the framework (within the repo ./examples/);
+- Simplified the ifb setup locig and other argument parsing code.
+
+
 v. 0.4.4 (2017-01-24)
 --------------------------
 - Refactored the core and the ``thehunmonkgroup`` plugin into a more loosly

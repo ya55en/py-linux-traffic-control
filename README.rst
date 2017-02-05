@@ -1,7 +1,10 @@
+(This file can be viewed using the online ReST editor at https://livesphinx.herokuapp.com/.)
+
 PyLTC
 ======
 
 Python-based Linux Traffic Control setup utility.
+
 
 
 Installation
@@ -15,8 +18,8 @@ control.
 Please make sure you have root access while using the tool.
 
 
-Examples of command line usage:
--------------------------------
+Examples for command line usage:
+--------------------------------
 
 ltc.py provides a command line wrapper for the underlying Python
 modules. (No need to mention that ``./ltc.py --help`` is your best friend ;) )
@@ -24,40 +27,28 @@ modules. (No need to mention that ``./ltc.py --help`` is your best friend ;) )
 Simple examples:
 ****************
 
-Getting the app version::
+Getting the tool version::
 
- $ sudo ./ltc.py -V  # note the capital 'V', lowercase means 'verbose'
+ $ ./ltc.py -V  # note the capital 'V', lowercase '-v' means 'verbose'
 
 Clearing the default lo interface::
 
- $ sudo ./ltc.py tc --clear
+ $ sudo ./ltc.py simnet --clear
 
 Clearing the eth0 interface, with verbose output::
 
- $ sudo ./ltc.py tc -c --interface eth0 -v
+ $ sudo ./ltc.py simnet -c --interface eth0 -v
 
-Note that the two commands above will also clear the ``ifb`` device used for ingress control. If you want
-to clear only the upload (egress) chain, do::
+Note that the two commands above will also clear the ``ifb`` device used for ingress control.
+If you want to clear only the upload (egress) chain, do::
 
- $ sudo ./ltc.py tc -c --interface eth0 --upload -v
+ $ sudo ./ltc.py simnet -c --interface eth0 --upload -v
 
 Setting up some upload classes (dport and sport)::
 
- $ sudo ./ltc.py tc -c -v -u tcp:dport:6000-6080:512kbit
- $ sudo ./ltc.py tc -c -v -i eth0 -u tcp:dport:6000-6080:512kbit udp:sport:5000-5080:2mbit:3%
- $ sudo ./ltc.py tc -c -v -i eth0 -u tcp:dport:6000-6080:512kbit udp:sport:5000-5080:2mbit:3% tcp:sport:2000-2080:256kbit udp:dport:3000-3080:1mbit:3%
-
-Setting up some disciplines as defined in 4g-sym profile of a default config file::
-
- $ sudo ./ltc.py profile 4g-sym
-
-Default config file locations are defined in the module's CONFIG_PATHS constant
-for now (currently being set to ``('./pyltc.profiles', '/etc/pyltc.profiles')``.
-
-
-Setting up some disciplines as defined in 3g-sym profile of the given config file::
-
- $ sudo ./ltc.py profile 3g-sym -c /path/to/config.conf
+ $ sudo ./ltc.py simnet -c -v -u tcp:dport:6000-6080:512kbit
+ $ sudo ./ltc.py simnet -c -v -i eth0 -u tcp:dport:6000-6080:512kbit udp:sport:5000-5080:2mbit:3%
+ $ sudo ./ltc.py simnet -c -v -i eth0 -u tcp:dport:6000-6080:512kbit udp:sport:5000-5080:2mbit:3% tcp:sport:2000-2080:256kbit udp:dport:3000-3080:1mbit:3%
 
 
 Ingress Traffic Control
@@ -75,7 +66,7 @@ If you want to use a specific ifb device, make sure you first create it with::
  $ sudo modprobe ifb numifbs=0
  $ sudo ip link set dev ifbX up  # substitute X with the first not-yet-existing ifb device number
 
-and then give it to ltc.py as a value to the ``--ifbdevice`` option::
+and then give it to ``ltc.py`` as a value to the ``--ifbdevice`` option::
 
  $ sudo ./ltc.py tc -cvi eth0 --ifbdevice ifb0 --download tcp:dport:8080-8088:256kbit:7%
 
@@ -83,18 +74,32 @@ Seting up both upload (egress) and download (ingress) traffic control is now pos
 
  $ sudo ./ltc.py tc -cvi eth0 --download tcp:dport:8080-8088:256kbit:7% --upload tcp:sport:20000-49999:256kbit:7%
 
+
 Profile configuration files
 ----------------------------
+
+Setting up some disciplines as defined in 4g-sym profile of a default config file::
+
+ $ sudo ./ltc.py profile 4g-sym
+
+Setting up some disciplines as defined in 3g-sym profile of the given config file::
+
+ $ sudo ./ltc.py profile 3g-sym -c /path/to/config.conf
+
+----
 
 pyltc command line has an alternative arguments parser which expects a single positional argument which is
 the name of a *profile*. *Profiles* are stored in profile configuration files with a syntax shown in the
 sample below. (Comments in profile config start with either a semicolon ``';'`` or hash sign ``'#'``.)
 
+Default config file locations are defined in the module's ``CONFIG_PATHS`` constant
+for now (currently being set to ``('./pyltc.profiles', '/etc/pyltc.profiles')``.
+
 To invoke ``ltc.py`` in that mode, you'll do something like::
 
  $ sudo ./ltc.py profile -c /path/to/myconf.profile 3g-sym
 
-or if the file is on one of the standard locations, simply::
+or if the file is on one of the default locations, simply::
 
  $ sudo ./ltc.py profile 3g-sym
 
@@ -181,6 +186,8 @@ Important TODOs:
 Using ``pyltc`` framework from python
 -------------------------------------
 
+Note: most of the example code below can also be found as python modules located at the ``./examples/`` folder.
+
 Using the core framework
 *************************
 
@@ -211,32 +218,38 @@ Details on what happens in the above code:
  # This is the facade where you get interface objects from:
  from pyltc.core.facade import TrafficControl
 
+ # We will replace the default target builder with one that only prints commands on stdout:
+ from pyltc.core.tfactory import printing_target_factory
+
  # Required: initializes the state of the framework:
  TrafficControl.init()
 
- # Get an object that represents the network interface 'eth0':
- iface = TrafficControl.get_interface('eth0')
+ # We get an object that represents the local network interface ('lo')
+ # (for real use you'll want something like 'eth0'):
+ iface = TrafficControl.get_interface('lo', target_factory=printing_target_factory)
 
  # The ITarget.clear() method builds a command that removes any previously attached
- # qdiscs to the egress root hook of the Linux kernel:
+ # qdiscs to the egress root hook of the Linux kernel.
  iface.egress.clear()
 
  # We now attach a qdisc which is going to be the root qdisc for the egress chain:
  rootqd = iface.egress.set_root_qdisc('htb')
 
- # We create a qdisc class attached to the root qdisc. kw arguments are passed directly
- # to the qdisc in the form 'key1 value1 key2 value2 ...'.  It is up to you to provide
- # correct arguments (if not, then tc will return the error the kernel is going to report).
+ # We create a qdisc class attached to the root qdisc. kw arguments are passed
+ # direvtly to the qdisc in the form 'key1 value1 key2 value2'.
  qdclass = iface.egress.add_class('htb', rootqd, rate='384kbit')
 
  # We create a u32 filter with condition "ip protocol 17 0xff" attached to the root qdisc
- # and directing matching packets to the qdisc class we just created above:
+ # and directing mathching packets to the qdisc class we just created above:
  filter = iface.egress.add_filter('u32', rootqd, cond="ip protocol 17 0xff", flownode=qdclass)
 
- # Marshaling the commands accumulated. In the standard case, this means an attempt
- # to configure the kernel using the ``tc`` binary is done. There are other options
- # (like saving the commands to a file).
+ # Marshalling the commands built for our case will simply dump them on stdout, as the
+ # factory define above -- ``tc_file_target_factory`` -- does only that.
  iface.egress.marshal()
+
+ # Use pyltc.core.tfactory.default_target_factory to configure the framework to use
+ # TcCommandTarget, which will during ``marshal()`` actually execute those commands.
+ # Note that you need root privileges to configure the kernel.
 
 A more complex example that illustrates download (ingress) control:
 
@@ -244,49 +257,49 @@ A more complex example that illustrates download (ingress) control:
 
  from pyltc.core.facade import TrafficControl
  from pyltc.core.netdevice import DeviceManager
- from pyltc.core.tfactory import tc_file_target_factory
+
+ # Use any factory that suits your goal or omit this to use the default command-executing tc factory:
+ from pyltc.core.tfactory import printing_target_factory
 
  TrafficControl.init()
 
- # The target factory used here provides a target that only prints on stdout:
- iface = TrafficControl.get_interface('eth0', target_factory=tc_file_target_factory)
+ # This target factory provides a target that only prints on stdout:
+ iface = TrafficControl.get_interface('lo', target_factory=printing_target_factory)
 
  # Setting up an ifb device for the ingress control
  # (We need a convenience method to ease this setup!)
- ifbdev_name = 'ifb1'
+ ifbdev_name = 'ifb0'
 
- # This one may raise "AssertionError: Device already exists: 'ifb0'" -- try with ifb1 (or ifb2, etc.)
- ifbdev_name = DeviceManager.device_add(ifbdev_name)
- ifbdev = TrafficControl.get_interface(ifbdev_name, target_factory=tc_file_target_factory)
+ # If this one raises "Device already exists: 'ifb0'", then try with 'ifb1', 'ifb2', etc.
+ DeviceManager.ensure_device(ifbdev_name)
+ ifbdev = TrafficControl.get_interface(ifbdev_name, target_factory=printing_target_factory)
 
  iface.ingress.set_redirect(iface, ifbdev)
 
- # Building and marshaling the egress tc chain:
+ # Configuring and marshal the egress tc chain:
  iface.egress.clear()
  rootqd = iface.egress.set_root_qdisc('htb')
  qdclass = iface.egress.add_class('htb', rootqd, rate='384kbit')
  filter = iface.egress.add_filter('u32', rootqd, cond="ip protocol 17 0xff", flownode=qdclass)
- # With the above used target factory, this will save the commands to a file:
  iface.egress.marshal()
 
- # Building and marshaling the egress tc chain:
+ # Configuring and marshal the egress tc chain:
  iface.ingress.clear()
  rootqd = iface.ingress.set_root_qdisc('htb')
  qdclass = iface.ingress.add_class('htb', rootqd, rate='384kbit')
  filter = iface.ingress.add_filter('u32', rootqd, cond="ip protocol 17 0xff", flownode=qdclass)
- # With the above used target factory, this will save the commands to a file:
  iface.ingress.marshal()
 
 
 Using the ``simnet`` wrapper
 *****************************
 
-Our goal with ``pyltc`` is to provide a platform that allows for easily creating, using and sharing LTC
-recipes both with and without command line interface.
+Our goal with ``pyltc`` is to provide a platform allowing for easily create, use and share LTC
+recipes both with command line interface and programmatically.
 
-The current functionality is separated into a plugin named ``simnet`` (for "simulate network conditions").
+The current functionality is separated into a plugin named ``simnet`` (for "*sim*-ulate *net*-work").
 There is a wrapping class with methods ``configure()``, ``setup()`` and ``marshal()``. The class is
-``pyltc.plugins.simnet.SimNetPlugin``. The idea is to have an ``AbstractPlugin`` class with a well
+``pyltc.plugins.simnet.SimNetPlugin``. The idea is to some day have an ``AbstractPlugin`` class with a well
 defined interface, have ``SimNetPlugin`` implement that and let other people implement their own
 plugins.
 
@@ -299,7 +312,7 @@ You would set common parameters like ``--clear`` or ``--verbose`` using the plug
 
 Finally, call the plugin ``marshal()`` method to get the setup actually executed against the kernel using ``tc``.
 
-Here's a real world example:
+Here's an example of using the plugin wrapper:
 
 .. code:: python
 
@@ -307,7 +320,7 @@ Here's a real world example:
 
  TrafficControl.init()
  simnet = TrafficControl.get_plugin('simnet')
- simnet.configure(interface='lo1', ifbdevice='ifb0', clear=True)
+ simnet.configure(interface='lo', ifbdevice='ifb0', clear=True)
  simnet.setup(upload=True, protocol='tcp', porttype='dport', range='8000-8080', rate='512kbit', jitter='7%')
  simnet.setup(download=True, protocol='tcp', range='all', jitter='5%')
  simnet.marshal()

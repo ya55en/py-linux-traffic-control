@@ -6,13 +6,13 @@ Simple examples of using ``pyltc`` framework from within python.
 from pyltc.core.facade import TrafficControl
 
 # We will replace the default target builder with one that only prints commands on stdout:
-from pyltc.core.target import PrintingTcTarget as target_factory
+from pyltc.core.tfactory import printing_target_factory
 
 # Required: initializes the state of the framework:
 TrafficControl.init()
 
 # We get an object that represents the network interface eth0:
-iface = TrafficControl.get_interface('lo', target_factory=target_factory)
+iface = TrafficControl.get_interface('lo', target_factory=printing_target_factory)
 
 # The ITarget.clear() method builds a command that removes any previously attached
 # qdiscs to the egress root hook of the Linux kernel.
