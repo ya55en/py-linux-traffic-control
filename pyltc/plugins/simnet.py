@@ -58,42 +58,10 @@ def parse_ini_file(profile, conf_file, verbose):
     except KeyError:  # FIXME: revisit this; raising an exception seems better
         return ['no_such_profile', '{!r}'.format(profile)]
 
-    new_args.insert(0, 'tc')
+    new_args.insert(0, 'simnet')
     if verbose:
         print("Profile args:", new_args)
     return new_args
-
-
-# def determine_ifb_device(ifbdevice_arg, verbose_arg, parser):
-#     """Returns the name of the ifb device while handling the '--download' command line
-#     argument (denoting ingress traffic control). Reuses an existing device if specified
-#     and available or create a new device as necessary.
-#     """
-#     if not ifbdevice_arg:
-#         return None
-#
-#     available_ifbs = sorted(DeviceManager.all_iface_names(filter='ifb'))
-#     if ifbdevice_arg in available_ifbs:
-#         return ifbdevice_arg  # using an existing and preconfigured ifb device
-#
-#     if ifbdevice_arg != 'setup':
-#         parser.error(
-#             "ifb device not found: {!r}. Leave '--ifbdevice' switch empty to set up a new one.".format(ifbdevice_arg))
-#         raise RuntimeError('UNREACHABLE')
-#
-#     # we need to set up a new device
-#     if not available_ifbs:
-#         CommandLine('modprobe ifb numifbs=0', verbose=verbose_arg, sudo=True).execute()
-#         CommandLine('ip link add ifb0 type ifb', verbose=verbose_arg, sudo=True).execute()
-#         CommandLine('ip link set dev ifb0 up', verbose=verbose_arg, sudo=True).execute()
-#         available_ifbs = sorted(DeviceManager.all_iface_names(filter='ifb'))
-#         assert len(available_ifbs) == 1, "expected available_ifbs to have single device, got {!r}" \
-#                                           .format(available_ifbs)
-#
-#     ifbnum = [int(el.lstrip('ifb')) for el in available_ifbs][-1]  # + 1
-#     ifbdev = "ifb{}".format(ifbnum)
-#     CommandLine('ip link set dev {} up'.format(ifbdev), verbose=verbose_arg, sudo=True).execute()
-#     return ifbdev
 
 
 def handle_version_arg(argv):
@@ -133,7 +101,7 @@ def parse_args(argv, old_args_dict=None):
                                      " If not specified, default paths will be tried before giving up"
                                      " (see module's CONFIG_PATHS).")
 
-    parser_cmd = subparsers.add_parser("tc", help="traffic control setup to be applied")
+    parser_cmd = subparsers.add_parser('simnet', help="traffic control setup to be applied")
     parser_cmd.add_argument("-v", "--verbose", action='store_true', required=False, default=False,
                             help="more verbose output (default: %(default)s)")
     parser_cmd.add_argument("-i", "--interface", required=False, default='lo',
@@ -164,29 +132,14 @@ def parse_args(argv, old_args_dict=None):
     if not args.subparser:
         parser.error('No action requested.')
 
-    if args.subparser == 'tc':
+    if args.subparser == 'simnet':
 
         if args.clear and args.upload is None and args.download is None:
             args.upload = []
             args.download = []
 
-        # if args.clearonly_mode:
-        #     artificially made to be "not False":
-        #     args.upload = [':fake:']
-        #     args.download = [':fake']
-
         if not (args.upload or args.download or args.clear):
             parser.error('no action requested: add at least one of --upload, --download, --clear.')
-
-        # if args.ifbdevice and args.download is None:
-        #     parser.error('cannot set ifb device without download setup.')
-
-        # if not args.ifbdevice and (args.download or args.clearonly_mode):
-        #     args.ifbdevice = 'setup'
-        # args.ifbdevice = determine_ifb_device(args.ifbdevice, args.verbose, parser)
-
-    # else:
-    #     args.ifbdevice = None
 
     if not DeviceManager.device_exists(args.interface):
         raise ParserError("device NOT found: {!s}".format(args.interface))

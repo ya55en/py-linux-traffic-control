@@ -211,22 +211,3 @@ class NetDevice(object):
 
     def down(self):
         DeviceManager.device_down(self._name)
-
-
-# class IfbDevice(NetDevice):
-#
-#     @classmethod
-#     def load_module(cls):
-#         DeviceManager.load_module('ifb')
-#
-#     @classmethod
-#     def remove_module(cls):
-#         DeviceManager.remove_module('ifb')
-#
-#     @classmethod
-#     def shutdown_module(cls):
-#         DeviceManager.shutdown_module('ifb')
-#
-#     @classmethod
-#     def get_device(cls, name_or_module=None):
-#         return NetDevice.get_device(name_or_module or 'ifb')

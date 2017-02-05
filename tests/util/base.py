@@ -85,7 +85,7 @@ class LtcLiveTargetRun(object):
         args = parse_args(orig_argv)
         result = {}
         for group in args.upload:
-            group_dict = BranchParser(group, upload=True)
+            group_dict = BranchParser(group, upload=True).as_dict()
             klass = TCPNetPerfTest if group_dict['protocol'] == 'tcp' else UDPNetPerfTest
             bandwidth_dict = self._test_for_port_range(klass, group_dict['range'], self._udp_sendrate)
             result[group] = bandwidth_dict

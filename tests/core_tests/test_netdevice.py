@@ -118,14 +118,3 @@ class LiveModuleTest(unittest.TestCase):
         self.assertTrue(dev.is_up())
         dev.down()
         self.assertTrue(dev.is_down())
-
-
-# FIXME: write tests for IfbDevice
-# class TestIfbDevice(unittest.TestCase):
-#
-#     def wishful_api_2(self):
-#         dev = DeviceManager('dummy1')
-#         ifbdev = IfbDevice.get_device()
-#         dev.set_ingress_ifb(ifbdev)
-#         dev.egress.set_root_qdisc('htb')
-#         dev.ingress.set_root_qdisc('htb')

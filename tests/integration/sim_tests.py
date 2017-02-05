@@ -31,7 +31,7 @@ class TestPyLtcFake(unittest.TestCase):
         DeviceManager.shutdown_module('ifb')
 
     def test_upload_simple_tcp(self):
-        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--upload', 'tcp:dport:9000-9010:512kbit'])
+        fake_test = LtcSimulateTargetRun(['simnet', '-i', 'lo', '-c', '--upload', 'tcp:dport:9000-9010:512kbit'])
         fake_test.run()
         expected = [
             'tc qdisc del dev lo root',
@@ -48,7 +48,7 @@ class TestPyLtcFake(unittest.TestCase):
         self.assertEqual(expected, fake_test.result)
 
     def test_upload_simple_tcp_rport(self):
-        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--upload', 'tcp:rport:9000-9010:512kbit'])
+        fake_test = LtcSimulateTargetRun(['simnet', '-i', 'lo', '-c', '--upload', 'tcp:rport:9000-9010:512kbit'])
         fake_test.run()
         expected = [
             'tc qdisc del dev lo root',
@@ -65,7 +65,7 @@ class TestPyLtcFake(unittest.TestCase):
         self.assertEqual(expected, fake_test.result)
 
     def test_upload_single_port_tcp(self):
-        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--upload', 'tcp:dport:9100:1mbit'])
+        fake_test = LtcSimulateTargetRun(['simnet', '-i', 'lo', '-c', '--upload', 'tcp:dport:9100:1mbit'])
         fake_test.run()
         expected = [
             'tc qdisc del dev lo root',
@@ -82,7 +82,7 @@ class TestPyLtcFake(unittest.TestCase):
         self.assertEqual(expected, fake_test.result)
 
     def test_upload_simple_udp(self):
-        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--upload', 'udp:dport:9200-9210:786kbit'])
+        fake_test = LtcSimulateTargetRun(['simnet', '-i', 'lo', '-c', '--upload', 'udp:dport:9200-9210:786kbit'])
         fake_test.run()
         expected = [
             'tc qdisc del dev lo root',
@@ -99,7 +99,7 @@ class TestPyLtcFake(unittest.TestCase):
         self.assertEqual(expected, fake_test.result)
 
     def test_upload_single_port_udp(self):
-        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--upload', 'udp:dport:9300:2mbit'])
+        fake_test = LtcSimulateTargetRun(['simnet', '-i', 'lo', '-c', '--upload', 'udp:dport:9300:2mbit'])
         fake_test.run()
         expected = [
             'tc qdisc del dev lo root',
@@ -116,7 +116,7 @@ class TestPyLtcFake(unittest.TestCase):
         self.assertEqual(expected, fake_test.result)
 
     def test_upload_all_rage(self):
-        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--upload', 'tcp:all:128kbit', 'udp:all:24mbit'])
+        fake_test = LtcSimulateTargetRun(['simnet', '-i', 'lo', '-c', '--upload', 'tcp:all:128kbit', 'udp:all:24mbit'])
         fake_test.run()
         expected = [
             'tc qdisc del dev lo root',
@@ -131,7 +131,7 @@ class TestPyLtcFake(unittest.TestCase):
         self.assertEqual(expected, fake_test.result)
 
     def test_upload_complex(self):
-        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--upload', 'tcp:dport:9700:2mbit', 'tcp:sport:9800-9820:4mbit:3%', 'udp:sport:9900-9910:786kbit:10%', 'udp:dport:9999:1gbit'])
+        fake_test = LtcSimulateTargetRun(['simnet', '-i', 'lo', '-c', '--upload', 'tcp:dport:9700:2mbit', 'tcp:sport:9800-9820:4mbit:3%', 'udp:sport:9900-9910:786kbit:10%', 'udp:dport:9999:1gbit'])
         fake_test.run()
         expected = [
             'tc qdisc del dev lo root',
@@ -156,7 +156,7 @@ class TestPyLtcFake(unittest.TestCase):
         self.assertEqual(expected, fake_test.result)
 
     def test_download_simple_tcp(self):
-        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--download', 'tcp:dport:9400-9410:1mbit'])
+        fake_test = LtcSimulateTargetRun(['simnet', '-i', 'lo', '-c', '--download', 'tcp:dport:9400-9410:1mbit'])
         fake_test.run()
         expected = [
             'tc qdisc del dev lo ingress',
@@ -176,7 +176,7 @@ class TestPyLtcFake(unittest.TestCase):
         self.assertEqual(expected, fake_test.result)
 
     def test_download_simple_tcp_lport(self):
-        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--download', 'tcp:lport:9400-9410:1mbit'])
+        fake_test = LtcSimulateTargetRun(['simnet', '-i', 'lo', '-c', '--download', 'tcp:lport:9400-9410:1mbit'])
         fake_test.run()
         expected = [
             'tc qdisc del dev lo ingress',
@@ -196,7 +196,7 @@ class TestPyLtcFake(unittest.TestCase):
         self.assertEqual(expected, fake_test.result)
 
     def test_download_single_port_tcp(self):
-        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--download', 'tcp:sport:9500:6%'])
+        fake_test = LtcSimulateTargetRun(['simnet', '-i', 'lo', '-c', '--download', 'tcp:sport:9500:6%'])
         fake_test.run()
         expected = [
             'tc qdisc del dev lo ingress',
@@ -217,7 +217,7 @@ class TestPyLtcFake(unittest.TestCase):
         self.assertEqual(expected, fake_test.result)
 
     def test_download_simple_udp(self):
-        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--download', 'udp:dport:9600-9610:786gbit'])
+        fake_test = LtcSimulateTargetRun(['simnet', '-i', 'lo', '-c', '--download', 'udp:dport:9600-9610:786gbit'])
         fake_test.run()
         expected = [
             'tc qdisc del dev lo ingress',
@@ -237,7 +237,7 @@ class TestPyLtcFake(unittest.TestCase):
         self.assertEqual(expected, fake_test.result)
 
     def test_download_single_port_udp(self):
-        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--download', 'udp:sport:9600:2mbit'])
+        fake_test = LtcSimulateTargetRun(['simnet', '-i', 'lo', '-c', '--download', 'udp:sport:9600:2mbit'])
         fake_test.run()
         expected = [
             'tc qdisc del dev lo ingress',
@@ -257,7 +257,7 @@ class TestPyLtcFake(unittest.TestCase):
         self.assertEqual(expected, fake_test.result)
 
     def test_download_all_rage(self):
-        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--download', 'tcp:all:128gbit', 'udp:all:224kbit'])
+        fake_test = LtcSimulateTargetRun(['simnet', '-i', 'lo', '-c', '--download', 'tcp:all:128gbit', 'udp:all:224kbit'])
         fake_test.run()
         expected = [
             'tc qdisc del dev lo ingress',
@@ -275,7 +275,7 @@ class TestPyLtcFake(unittest.TestCase):
         self.assertEqual(expected, fake_test.result)
 
     def test_download_complex(self):
-        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--download', 'tcp:dport:10000:1mbit', 'tcp:sport:10100-10120:384kbit:7%', 'udp:sport:10200-10210:512mbit:10%', 'udp:dport:10300:12bit'])
+        fake_test = LtcSimulateTargetRun(['simnet', '-i', 'lo', '-c', '--download', 'tcp:dport:10000:1mbit', 'tcp:sport:10100-10120:384kbit:7%', 'udp:sport:10200-10210:512mbit:10%', 'udp:dport:10300:12bit'])
         fake_test.run()
         expected = [
             'tc qdisc del dev lo ingress',
@@ -303,7 +303,7 @@ class TestPyLtcFake(unittest.TestCase):
         self.assertEqual(expected, fake_test.result)
 
     def test_both_complex(self):
-        fake_test = LtcSimulateTargetRun(['tc', '-i', 'lo', '-c', '--upload', 'tcp:dport:9700:2mbit', 'tcp:sport:9800-9820:4mbit:3%', 'udp:sport:9900-9910:786kbit:10%', 'udp:dport:9999:1gbit', '--download', 'tcp:dport:10000:1mbit', 'tcp:sport:10100-10120:384kbit:7%', 'udp:sport:10200-10210:512mbit:10%', 'udp:dport:10300:12bit'])
+        fake_test = LtcSimulateTargetRun(['simnet', '-i', 'lo', '-c', '--upload', 'tcp:dport:9700:2mbit', 'tcp:sport:9800-9820:4mbit:3%', 'udp:sport:9900-9910:786kbit:10%', 'udp:dport:9999:1gbit', '--download', 'tcp:dport:10000:1mbit', 'tcp:sport:10100-10120:384kbit:7%', 'udp:sport:10200-10210:512mbit:10%', 'udp:dport:10300:12bit'])
         fake_test.run()
         expected = [
             'tc qdisc del dev lo root',

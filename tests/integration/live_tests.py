@@ -74,8 +74,8 @@ class TestPyLtcLive(unittest.TestCase):
 
         else:
             print('--Record mode OFF--')
-            pyltc_entry_point(['tc', '-i', 'lo', '-c', '-in'])
-            pyltc_entry_point(['tc', '-i', 'lo', '-c', '--upload', 'tcp:dport:15000:512kbit', 'tcp:dport:16001-16005:1mbit'])
+            pyltc_entry_point(['simnet', '-i', 'lo', '-c', '-b'])
+            pyltc_entry_point(['simnet', '-i', 'lo', '-c', '--upload', 'tcp:dport:15000:512kbit', 'tcp:dport:16001-16005:1mbit'])
             tcp_netperf = TCPNetPerfTest('dummy', host='127.0.0.1', port=DEFAULT_TEST_PORT, duration=DURATION)
             cls.tcp_free_rate = tcp_netperf.run()
 
@@ -107,7 +107,7 @@ class TestPyLtcLive(unittest.TestCase):
             tcp_free_rate = self.tcp_free_rate
         assert tcp_free_rate or udp_free_rate
 
-        arg_list = ['tc', '-i', 'lo', '-c']
+        arg_list = ['simnet', '-i', 'lo', '-c']
         arg_list.append('--upload')
         for case in cases:
             arg_list.append(case)
@@ -129,7 +129,7 @@ class TestPyLtcLive(unittest.TestCase):
             self._check_bandwidth(free_rate, results['right_out'], MAX_FREE_RATE_TOLERANCE)
 
     def _do_record(self, cases):
-        arg_list = ['tc', '-i', 'lo', '-c']
+        arg_list = ['simnet', '-i', 'lo', '-c']
         arg_list.append('--upload')
         for case in cases:
             arg_list.append(case)
