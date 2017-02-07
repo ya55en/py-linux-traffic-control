@@ -6,8 +6,6 @@ Unit tests for the commandline utility module.
 import unittest
 from subprocess import TimeoutExpired
 
-from pyltc.device import Interface
-from pyltc.target import TcCommandTarget
 from pyltc.util.cmdline import CommandLine, CommandFailed
 
 
@@ -19,7 +17,7 @@ class TestCommandFailed(unittest.TestCase):
     def test_creation_w_command(self):
         cmd = CommandLine("/bin/false", ignore_errors=True).execute()
         exc = CommandFailed(cmd)
-        self.assertEqual("Command failed: '/bin/false' (rc=1)", str(exc))
+        self.assertEqual("Command failed (rc=1, '/bin/false')", str(exc))
 
     def test_creation_w_non_command_fails(self):
         self.assertRaises(AssertionError, CommandFailed, "STRING")
@@ -33,18 +31,28 @@ class TestCommandFailed(unittest.TestCase):
 
 class TestCommandLine(unittest.TestCase):
 
-    def test_creation_default(self):
+    def test_creation_default_fails(self):
         self.assertRaises(TypeError, CommandLine)
 
-    def test_creation_cmd_line(self):
+    def test_creation_w_command(self):
         cmd = CommandLine("/bin/true")
         self.assertEqual("/bin/true", cmd.cmdline)
         self.assertFalse(cmd._ignore_errors)
 
-    def test_creation_cmd_line_ignore_errors(self):
+    def test_creation_ignore_errors(self):
         cmd = CommandLine("/bin/true", ignore_errors=True)
         self.assertEqual("/bin/true", cmd.cmdline)
         self.assertTrue(cmd._ignore_errors)
+
+    def test_creation_sudo(self):
+        cmd = CommandLine("/bin/true", sudo=True)
+        self.assertEqual("/bin/true", cmd.cmdline)
+        self.assertTrue(cmd._sudo)
+
+    def test_creation_verbose(self):
+        cmd = CommandLine("/bin/true", verbose=True)
+        self.assertEqual("/bin/true", cmd.cmdline)
+        self.assertTrue(cmd._verbose)
 
     def test_execute_simple(self):
         cmd = CommandLine("/bin/true")
@@ -105,13 +113,17 @@ class TestCommandLine(unittest.TestCase):
         cmd = CommandLine("/bin/true")
         self.assertRaises(RuntimeError, cmd._construct_cmd_list, 'asd " asd"123"')
 
-    def test_real(self):
-        # FIXME: revisit this; add checks
-        iface = Interface('veth15')
-        target = TcCommandTarget(iface)
-        target._commands = ['echo TEST_TEST', '/bin/true', 'echo (._. )']
-        #target.install(verbosity=True)
-        target.install(verbose=False)
+    def test_construct_cmd_list_case_w_sudo(self):
+        cmd = CommandLine("/bin/true", sudo=True)
+        self.assertEqual(['sudo', 'one', 'two three', 'four'], cmd._construct_cmd_list('one "two three" four'))
+
+    # FIXME: revisit this - not the proper place to use TcCommandTarget ?
+    # def test_real(self):
+    #     iface = Interface('veth15')
+    #     target = TcCommandTarget(iface)
+    #     target._commands = ['echo TEST_TEST', '/bin/true', 'echo (._. )']
+    #     #target.install(verbosity=True)
+    #     target.install(verbose=False)
 
 
 if __name__ == '__main__':

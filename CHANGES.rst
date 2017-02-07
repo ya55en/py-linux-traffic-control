@@ -2,6 +2,34 @@
 py-linux-traffic-control changes
 =================================
 
+v. 0.4.6 (2017-01-24)
+--------------------------
+- Added support for lport/rport port type;
+- Added support for loading a simnet profile programmatically;
+- Changed default plugin name from ``tc`` to ``simnet``;
+- Provided working examples on using the framework (within the ./examples/ directory);
+- Simplified the argument parsing code, including the ifb setup logic.
+
+
+v. 0.4.4 (2017-01-24)
+--------------------------
+- Refactored the core and the ``thehunmonkgroup`` plugin into a more loosly
+  coupled system;
+- Renamed the ``thehunmonkgroup`` into ``simnet`` and provided a wrapper class
+  for easy setup of rate+jitter recipes programmatically.
+
+
+v. 0.4.2 (2017-01-14)
+--------------------------
+- Significant refactoring of the core framework.
+- New way to describe tc classes using --download (for ingress) and --upload (for egress)
+  command line arguments. They also accept multiple tokens each defining a separate class.
+- Both upload and download setups are now supported within the same command line.
+- New names for other arguments.
+- Improved handling of ifb (and any other network) devices using a new DeviceManager.
+- Improved integration test suite with richer simulation tests that can run w/o root privileges.
+- Updated README with simple examples of using the framework from python.
+
 
 v. 0.3.1 (2016-12-26)
 --------------------------

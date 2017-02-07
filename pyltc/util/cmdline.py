@@ -50,8 +50,9 @@ class CommandFailed(Exception):
         output = command.stderr
         if command.stdout:
             output = "out:{}\nerr: {}".format(command.stdout, output)
-        msg = output if output.strip() else "Command failed: {!r}".format(command.cmdline)
-        msg = msg.rstrip() + " (rc={})".format(command.returncode)
+        msg = "Command failed (rc={}, {!r})".format(command.returncode, command.cmdline)
+        if output:
+            msg += ": " + output
         super(CommandFailed, self).__init__(msg)
         self._command = command
 
@@ -63,9 +64,11 @@ class CommandFailed(Exception):
 class CommandLine(object):
     """Command line execution class."""
 
-    def __init__(self, cmdline, ignore_errors=False):
+    def __init__(self, cmdline, ignore_errors=False, verbose=False, sudo=False):
         self._cmdline = cmdline
         self._ignore_errors = ignore_errors
+        self._verbose = verbose
+        self._sudo = sudo
         self._returncode = None
         self._stdout = None
         self._stderr = None
@@ -80,16 +83,25 @@ class CommandLine(object):
            as a single command element.
            """
         QUOTE = '"'
-        quote_count = command.count(QUOTE)
-        if quote_count % 2 != 0:
-            raise RuntimeError('Unbalanced quotes in command: {!r}'.format(command))
-        if quote_count == 0:
-            return command.split()
-        left, mid, right = command.split(QUOTE, 2)
-        # recursively process the rest of the line
-        return left.split() + [mid] + self._construct_cmd_list(right)
+
+        def validate(command):
+            quote_count = command.count(QUOTE)
+            if quote_count % 2 != 0:
+                raise RuntimeError('Unbalanced quotes in command: {!r}'.format(command))
+
+        def construct_the_list(command):
+            if QUOTE not in command:
+                return command.split()
+            left, mid, right = command.split(QUOTE, 2)
+            return left.split() + [mid] + construct_the_list(right)  # recursively process the right part
+
+        validate(command)
+        result = ['sudo'] if self._sudo else []
+        result += construct_the_list(command)
+        return result
 
     def terminate(self):
+        # TODO: refactor
         if not self._proc:
             return None
         self._proc.terminate()
@@ -112,7 +124,7 @@ class CommandLine(object):
         self._proc = proc
         return self  # allows for one-line creation + execution with assignment
 
-    def execute(self, verbose=False, timeout=10):
+    def execute(self, timeout=10):
         """Prepares and executes the command."""
         command_list = self._construct_cmd_list(self._cmdline)
         PopenClass = popen_factory()
@@ -123,8 +135,8 @@ class CommandLine(object):
         self._stderr = stderr.decode('unicode_escape') if stderr else ""
         rc = proc.returncode
         self._returncode = rc
-        if verbose:
-            print(" #", self._cmdline)
+        if self._verbose:
+            print(">", " ".join(command_list))
         if rc and not self._ignore_errors:
             raise CommandFailed(self)
         return self  # allows for one-line creation + execution with assignment
