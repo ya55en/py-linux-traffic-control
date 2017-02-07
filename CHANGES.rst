@@ -2,7 +2,7 @@
 py-linux-traffic-control changes
 =================================
 
-v. 0.4.6 (2017-01-24)
+v. 0.4.6 (2017-02-07)
 --------------------------
 - Added support for lport/rport port type;
 - Added support for loading a simnet profile programmatically;
