@@ -18,20 +18,20 @@ control.
 Please make sure you have root access while using the tool.
 
 
-Examples for command line usage:
+Examples for command line usage
 --------------------------------
 
 ltc.py provides a command line wrapper for the underlying Python
 modules. (No need to mention that ``./ltc.py --help`` is your best friend ;) )
 
-Simple examples:
-****************
+Some simple examples:
+*********************
 
 Getting the tool version::
 
  $ ./ltc.py -V  # note the capital 'V', lowercase '-v' means 'verbose'
 
-Clearing the default lo interface::
+Clearing the default ``lo`` interface::
 
  $ sudo ./ltc.py simnet --clear
 
@@ -51,8 +51,8 @@ Setting up some upload classes (dport and sport)::
  $ sudo ./ltc.py simnet -c -v -i eth0 -u tcp:dport:6000-6080:512kbit udp:sport:5000-5080:2mbit:3% tcp:sport:2000-2080:256kbit udp:dport:3000-3080:1mbit:3%
 
 
-Ingress Traffic Control
-***********************
+Download/Ingress Traffic Control
+*********************************
 
 Sample command for setting up download (ingress) traffic control creating a new ifb device::
 
@@ -61,32 +61,32 @@ Sample command for setting up download (ingress) traffic control creating a new 
 The tool will create a new ifb device if none is found, or use the device with the highest
 number if at least one is found.
 
-If you want to use a specific ifb device, make sure you first create it with::
-
- $ sudo modprobe ifb numifbs=0
- $ sudo ip link set dev ifbX up  # substitute X with the first not-yet-existing ifb device number
+If you want to use a specific ifb device, just pass it as an argument to the ``--ifbdevice`` switch::
 
 and then give it to ``ltc.py`` as a value to the ``--ifbdevice`` option::
 
  $ sudo ./ltc.py tc -cvi eth0 --ifbdevice ifb0 --download tcp:dport:8080-8088:256kbit:7%
 
-Seting up both upload (egress) and download (ingress) traffic control is now possible, e.g.::
+Pyltc creates that device if not existing yet, executing for you under the hood something like::
+
+ $ sudo modprobe ifb numifbs=0
+ $ sudo ip link set dev ifbX up  # substitute X with the first not-yet-existing ifb device number
+
+Setting up both upload (egress) and download (ingress) traffic control with the same command is now possible, e.g.::
 
  $ sudo ./ltc.py tc -cvi eth0 --download tcp:dport:8080-8088:256kbit:7% --upload tcp:sport:20000-49999:256kbit:7%
+
+**Important notes about config files:**
+
+  - All classes you want to set up have to appear in one single command line. (If too long, then
+    consider to keep them in a profile configuration -- see next section.)
+
+  - Commands that configure network devices and/or the kernel traffic control chains have to be
+    executed with root access level.
 
 
 Profile configuration files
 ----------------------------
-
-Setting up some disciplines as defined in 4g-sym profile of a default config file::
-
- $ sudo ./ltc.py profile 4g-sym
-
-Setting up some disciplines as defined in 3g-sym profile of the given config file::
-
- $ sudo ./ltc.py profile 3g-sym -c /path/to/config.conf
-
-----
 
 pyltc command line has an alternative arguments parser which expects a single positional argument which is
 the name of a *profile*. *Profiles* are stored in profile configuration files with a syntax shown in the
@@ -131,6 +131,21 @@ Sample profile config file content::
    udp:dport:5000-5080:96kbit:3%
    tcp:sport:10000-29999:256kbit:1%
 
+**Important notes about config files:**
+
+  - Leading white space is significant:
+
+    * section header lines and other normal lines *must NOT* have any leading whitespace;
+    * lines that contain several traffic control class definitions (and are thus quite long)
+      can be broken into several lines, but now leading whitespace is *mandatory* for all
+      sub-lines.
+
+  - Comments can appear on a dedicated line as well as after significant content.
+
+  - Sections span up to the beginning of a next section or to the EOF.
+
+  - There's no default section - significant lines before the first sections are treated as
+    wrong syntax.
 
 Functional Testing
 ------------------
@@ -145,8 +160,8 @@ On debian-based distros installing it would look like::
 
  $ sudo apt-get install iperf
 
-How to run
-***********
+How to run the tests
+********************
 
 Simulation Test Suite
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -208,8 +223,8 @@ Here is a simple example:
  filter = iface.egress.add_filter('u32', rootqd, cond="ip protocol 17 0xff", flownode=qdclass)
  iface.egress.marshal()
 
-The ``marshal()`` call at the end will actually configure the kernel with the given htb *root qdisc* and
-an htb *qdisc class*, as well as adding the filter.
+The ``marshal()`` call at the end will actually configure the kernel with the given htb *root qdisc*
+and htb *qdisc class*, as well as adding the filter.
 
 Details on what happens in the above code:
 
@@ -299,18 +314,20 @@ recipes both with command line interface and programmatically.
 
 The current functionality is separated into a plugin named ``simnet`` (for "*sim*-ulate *net*-work").
 There is a wrapping class with methods ``configure()``, ``setup()`` and ``marshal()``. The class is
-``pyltc.plugins.simnet.SimNetPlugin``. The idea is to some day have an ``AbstractPlugin`` class with a well
-defined interface, have ``SimNetPlugin`` implement that and let other people implement their own
-plugins.
+``pyltc.plugins.simnet.SimNetPlugin``. The idea is to some day have an ``AbstractPlugin`` class with
+a well defined interface, have ``SimNetPlugin`` implement that and let other people implement their
+own plugins.
 
 So here's how to use ``SimNetPlugin``: after initializing the framework builders' state with
-``TrafficControl.init()``, the next thing to do it to obtain an instance of the plugin class via a call
-to ``TrafficControl.get_plugin()``.
+``TrafficControl.init()``, the next thing to do it to obtain an instance of the plugin class via
+a call to ``TrafficControl.get_plugin()``.
 
-You would set common parameters like ``--clear`` or ``--verbose`` using the plugin ``configure()``. The plugin
-``setup()`` method adds recipes for setting up either ``upload`` or ``download`` disciplines.
+You would set common parameters like ``--clear`` or ``--verbose`` using the plugin ``configure()``
+method. The plugin ``setup()`` method adds recipes for setting up either ``upload`` or ``download``
+disciplines.
 
-Finally, call the plugin ``marshal()`` method to get the setup actually executed against the kernel using ``tc``.
+Finally, call the plugin ``marshal()`` method to get the setup actually executed against the kernel
+using ``tc``.
 
 Here's an example of using the plugin wrapper:
 
@@ -328,6 +345,22 @@ Here's an example of using the plugin wrapper:
 
 For an example of how to use other target builders than the default, please refer to
 ``tests.plugins_tests.test_wrapping``.
+
+**Load a config file profile:**
+
+You can programmatically load a profile from a config file using the ``load_profile()`` simnet method like this:
+
+.. code:: python
+
+ from os.path import abspath, dirname, join as pjoin
+ from pyltc.core.facade import TrafficControl
+
+ TrafficControl.init()
+ # No printing factory; this time marshal() will attempt to configure the kernel:
+ simnet = TrafficControl.get_plugin('simnet')
+ simnet.configure(clear=True, verbose=True, ifbdevice='ifb2')  # as usual, first set general options
+ simnet.load_profile('4g-sym-egress', config_file='/path/to/my.profile')  # configure using the profile.
+ simnet.marshal()
 
 
 Have fun! ;)
