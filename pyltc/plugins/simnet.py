@@ -141,8 +141,8 @@ def parse_args(argv, old_args_dict=None):
         if not (args.upload or args.download or args.clear):
             parser.error('no action requested: add at least one of --upload, --download, --clear.')
 
-    if not DeviceManager.device_exists(args.interface):
-        raise ParserError("device NOT found: {!s}".format(args.interface))
+        if not DeviceManager.device_exists(args.interface):
+            raise ParserError("device NOT found: {!s}".format(args.interface))
 
     return args
 
