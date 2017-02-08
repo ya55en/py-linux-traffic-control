@@ -116,15 +116,16 @@ def parse_args(argv, old_args_dict=None):
                             help="define discipline classes for upload (egress) port range. Example:"
                                  " tcp:dport:16000-24000:512kbit:5%%. PROTOCOL, PORTTYPE and RANGE are required."
                                  " RATE and/or JITTER must be present. PROTOCOL is one of 'tcp', 'udp'."
-                                 " PORTTYPE is one of 'sport', 'dport'. RANGE is a dash-delimited range of ports"
-                                 " MINPORT-MAXPORT (inclusive), a single port or the keyword 'all'.")
+                                 " PORTTYPE is one of 'sport', 'dport', 'lport', 'rport'."
+                                 " RANGE is a dash-delimited range of ports MINPORT-MAXPORT (inclusive),"
+                                 " a single port or the keyword 'all'.")
     parser_cmd.add_argument("-d", "--download", default=None, nargs='*', type=str,
                             metavar='PROTOCOL:PORTTYPE:RANGE:RATE:JITTER',
                             help="define discipline class(es) for download (ingress) port range(s). Example:"
                                  " tcp:dport:16000-24000:512kbit:5%%. PROTOCOL, PORTTYPE and RANGE are required."
-                                 " RATE and/or JITTER must be present. PROTOCOL is one of 'tcp', 'udp'."
-                                 " PORTTYPE is one of 'sport', 'dport'. RANGE is a dash-delimited range of ports"
-                                 " MINPORT-MAXPORT (inclusive), a single port or the keyword 'all'.")
+                                 " PORTTYPE is one of 'sport', 'dport', 'lport', 'rport'."
+                                 " RANGE is a dash-delimited range of ports MINPORT-MAXPORT (inclusive),"
+                                 " a single port or the keyword 'all'.")
 
     args = parser.parse_args(argv)
     args.verbose = args.verbose or old_args_dict.get('verbose', False)

@@ -51,6 +51,46 @@ Setting up some upload classes (dport and sport)::
  $ sudo ./ltc.py simnet -c -v -i eth0 -u tcp:dport:6000-6080:512kbit udp:sport:5000-5080:2mbit:3% tcp:sport:2000-2080:256kbit udp:dport:3000-3080:1mbit:3%
 
 
+Explaining the class specifiers
+*******************************
+
+Traffic control class specifiers are the (zero or more) values of the ``--download`` and ``--upload`` command line switches. They follow this format:
+
+ ``PROTOCOL:PORTTYPE:RANGE:RATE:JITTER``
+
+For example:
+
+ ``tcp:dport:16000-24000:512kbit:5%%``
+
+- ``PROTOCOL``, ``PORTTYPE`` and ``RANGE`` are required.
+
+- ``PORTTYPE`` is one of ``sport``, ``dport``, ``lport``, ``rport``, their meaning explained:
+
+ - ``sport`` and ``dport`` mean *source-port* and *destination-port*, resp.
+ - ``lport`` and ``rport`` mean *local-port* and *remote-port*, which
+   should be used as follows: use ``lport`` when you know the port (or port range) of traffic at the machine being configured for traffic control; use ``rport`` when you know the port (or port range) of traffic at the remote machine handling the other side of the traffic connection.
+
+ For example, if about to shaping download traffic and knowing the port of the server we download from, then this will be an ``rport`` case; if uploading to a remote server and knowing its port, then again this is ``rport`` case (first one translates to ``sport`` and the second to ``dport`` but you don't need to bother thinking about this).
+
+
+- ``RANGE`` is a dash-delimited range of ports MINPORT-MAXPORT (inclusive),
+a single port or the keyword ``all``.
+
+Some examples:
+
+- ``--upload tcp:rport:8000-8099:512kbit:2%%`` -- shape *upload* (egress) *tcp* traffic traveling to *remote* (destination) port range *8000-8099* to *512kbit* and introduce artificial loss of *2%*.
+
+- ``--download udp:rport:10000-49999:2mbit`` -- shape *download* (ingress) *udp* traffic traveling to *local* (destination) port range *10000-49999* to *2mbit*.
+
+- ``--upload udp:rport:all:1mbit`` -- shape all *upload* egress *udp* traffic traveling to *local* (destination) to *1 Mbit/sec*.
+
+You can combine several such class specifiers into a single command line, like this::
+
+ sudo ./ltc.py simnet -c -v -i eth0 --upload tcp:dport:6000-6080:512kbit udp:sport:5000-5080:2mbit:3% --download ucp:lport:5000:50000:3mbit tcp:rport:80:9%
+
+Note that if you specify an ``all`` ports class for some of the two protocols and a given direction, it doesn't make sense to specify any other class for that protocol and direction.
+
+
 Download/Ingress Traffic Control
 *********************************
 
