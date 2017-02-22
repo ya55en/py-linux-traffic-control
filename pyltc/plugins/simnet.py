@@ -311,6 +311,7 @@ class SimNetPlugin(object):
         if (self._args.download is not None) and (not self._args.ifbdevice):
             self._args.ifbdevice = 'ifb'
         ifbdev = NetDevice.get_device(self._args.ifbdevice, self._target_factory)
+        ifbdev.up()
 
         if self._args.upload is not None:
             if self._args.clear:
