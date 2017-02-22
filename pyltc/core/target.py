@@ -178,7 +178,7 @@ class TcCommandTarget(TcTarget):
     def _marshal(self):
         for idx, cmd_str in enumerate(self._commands):
             ignore_errs = (idx == 0 and " del" in cmd_str)  # removal failures are expected, ignore
-            CommandLine(cmd_str, ignore_errors=ignore_errs, verbose=self._verbose).execute()
+            CommandLine(cmd_str, ignore_errors=ignore_errs, verbose=self._verbose, sudo=True).execute()
 
     def marshal(self):
         try:
