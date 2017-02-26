@@ -157,39 +157,14 @@ for now (currently being set to ``('./pyltc.profiles', '/etc/pyltc.profiles')``.
 
 To invoke ``ltc.py`` in that mode, you'll do something like::
 
- $ sudo ./ltc.py profile -c /path/to/myconf.profile 3g-sym
+ $ sudo ./ltc.py profile -c /path/to/myconf.profile 4g
 
 or if the file is on one of the default locations, simply::
 
- $ sudo ./ltc.py profile 3g-sym
+ $ sudo ./ltc.py profile 4g
 
-Sample profile config file content::
+See [the example profile](examples/my.profile) for more.
 
- ; Simulating outbound 4G network confitions
- [4g-sym-out]
- clear
- interface eth0 ; the primary interface
- upload tcp:dport:6000-6999:512kbit
-
- ; Simulating inbound 4G network conditions
- [4g-sym-in]
- clear
- verbose
- interface eth0 ; the primary interface
- download
-    ; !IMPORTANT: Note the indent of the two class definitions!
-    tcp:dport:6000-6999:2mbit
-    tcp:dport:8000-8099:1mbit
-
- # Simulating outbound 3G network conditions
- [3g-sym]
- clear
- interface eth0  # the primary interface
- upload tcp:dport:8000-8080:96kbit
- download
-   tcp:dport:8000-8080:96kbit
-   udp:dport:5000-5080:96kbit:3%
-   tcp:sport:10000-29999:256kbit:1%
 
 **Important notes about config files:**
 
