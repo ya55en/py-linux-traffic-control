@@ -1,4 +1,4 @@
-(This file can be viewed using the online ReST editor at https://livesphinx.herokuapp.com/.)
+.. (This file can be viewed using the online ReST editor at https://livesphinx.herokuapp.com/.)
 
 PyLTC
 ======
@@ -136,7 +136,7 @@ It is possible to run the tool as a non-root user, however, it requires some
 additional modifications to give the user(s) in question sudo access to the
 necessary commands used by the tool.
 
-Here's an example of a working sudo configuration for a user named 'test':
+Here's an example of a working sudo configuration for a user named 'test'::
 
  Defaults:test !requiretty
  test ALL=(ALL) NOPASSWD: /sbin/ip link *, /sbin/modprobe ifb *, /sbin/tc class *, /sbin/tc filter *, /sbin/tc qdisc *
@@ -163,8 +163,9 @@ or if the file is on one of the default locations, simply::
 
  $ sudo ./ltc.py profile 4g
 
-See [the example profile](examples/my.profile) for more.
+See the `example profile`_ for more.
 
+.. _example profile: examples/my.profile
 
 **Important notes about config files:**
 
