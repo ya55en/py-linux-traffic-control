@@ -125,7 +125,24 @@ Setting up both upload (egress) and download (ingress) traffic control with the 
     consider to keep them in a profile configuration -- see next section.)
 
   - Commands that configure network devices and/or the kernel traffic control chains have to be
-    executed with root access level.
+    executed with root access level (see the 'Running as a non-root user' section below for tips
+    on how to to successfully use the tool as a non-root user).
+
+
+Running as a non-root user
+----------------------------
+
+It is possible to run the tool as a non-root user, however, it requires some
+additional modifications to give the user(s) in question sudo access to the
+necessary commands used by the tool.
+
+Here's an example of a working sudo configuration for a user named 'test':
+
+ Defaults:test !requiretty
+ test ALL=(ALL) NOPASSWD: /sbin/ip link *, /sbin/modprobe ifb *, /sbin/tc class *, /sbin/tc filter *, /sbin/tc qdisc *
+
+Granting users sudo access has security considerations, so make sure you know
+what you're doing :)
 
 
 Profile configuration files
