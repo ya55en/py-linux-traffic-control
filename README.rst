@@ -76,6 +76,9 @@ For example:
 - ``RANGE`` is a dash-delimited range of ports MINPORT-MAXPORT (inclusive),
 a single port or the keyword ``all``.
 
+- ``RATE`` is the amount of data to limit the class to -- see the ``RATE``
+  section of ``man tc`` for specific details on all the available options.
+
 Some examples:
 
 - ``--upload tcp:rport:8000-8099:512kbit:2%%`` -- shape *upload* (egress) *tcp* traffic traveling to *remote* (destination) port range *8000-8099* to *512kbit* and introduce artificial loss of *2%*.
