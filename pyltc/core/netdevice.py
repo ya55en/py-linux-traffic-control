@@ -116,7 +116,7 @@ class DeviceManager(object):
 
 
 class NetDeviceNotFound(Exception):
-    pass
+    """Network device not found exception."""
 
 
 class NetDevice(object):
@@ -132,9 +132,9 @@ class NetDevice(object):
 
     @classmethod
     def get_device(cls, name_or_module, target_factory=default_target_factory):
-        """Returns a NetDevice instance that either wraps an existing device
-        with given name. The device is added first if it does not yet exist.
-        If only the module name is given (e.g. 'ifb') then the first available
+        """Returns a NetDevice instance that wraps an existing device with
+        given name. The device is added first if it does not yet exist. If
+        only the module name is given (e.g. 'ifb') then the first available
         device name is picked.
 
         :param name_or_module: string - device name or module name
