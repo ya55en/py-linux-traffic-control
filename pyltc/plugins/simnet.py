@@ -61,7 +61,7 @@ def parse_ini_file(profile, conf_file, verbose):
     new_args.insert(0, 'simnet')
     if verbose:
         print("Profile args:", new_args)
-    return new_args
+    return new_args, conf_file
 
 
 def handle_version_arg(argv):
@@ -77,11 +77,11 @@ def handle_version_arg(argv):
         sys.exit(0)
 
 
-def parse_args(argv, old_args_dict=None):
+def parse_args(argv, orig_args_dict=None):
     """Parses given list of command line arguments using `argparse.ArgumentParser`
        and returns the parsed namespace."""
     # old_args_dict not None when we are called with profile; then it contains original profile args.
-    old_args_dict = old_args_dict if old_args_dict else dict()
+    orig_args_dict = orig_args_dict if orig_args_dict else dict()
     parser = argparse.ArgumentParser(epilog="Use '%(prog)s sub-command -h/--help' to see the specific options.")
     if not argv:
         parser.error('Insufficient arguments. Try -h/--help.')
@@ -96,6 +96,8 @@ def parse_args(argv, old_args_dict=None):
     parser_profile.add_argument("profile_name", help="profile name from the config file")
     parser_profile.add_argument("-v", "--verbose", action='store_true', required=False, default=False,
                                 help="more verbose output (default: %(default)s)")
+    parser_profile.add_argument("-s", "--show", action='store_true', required=False, default=False,
+                                help="show profile (instead of execute) (default: %(default)s)")
     parser_profile.add_argument("-c", "--config", required=False, default=None,
                                 help="configuration file to read from."
                                      " If not specified, default paths will be tried before giving up"
@@ -128,7 +130,7 @@ def parse_args(argv, old_args_dict=None):
                                  " a single port or the keyword 'all'.")
 
     args = parser.parse_args(argv)
-    args.verbose = args.verbose or old_args_dict.get('verbose', False)
+    args.verbose = args.verbose or orig_args_dict.get('verbose', False)
 
     if not args.subparser:
         parser.error('No action requested.')
@@ -345,10 +347,26 @@ class SimNetPlugin(object):
             ifbdev.egress.configure(verbose=self._args.verbose)
             ifbdev.egress.marshal()
 
-    def load_profile(self, profile_name, config_file=None):
-        profile_args = parse_ini_file(profile_name, config_file, self._args.verbose)
+    def _show_profile(self, profile_name, profile_args, conf_file):
+        """Print the profile args to stdout."""
+        print("Showing profile %r:\n  " % profile_name, end="")
+        for elm in profile_args:
+            if elm.startswith('--'):
+                print("\n  ", end="")
+            print(elm, " ", sep="", end="")
+        print()
+
+    def load_profile(self):
+        profile_args, conf_file = parse_ini_file(self._args.profile_name,
+                                                 self._args.config,
+                                                 self._args.verbose)
+        if self._args.show:
+            self._show_profile(self._args.profile_name, profile_args, conf_file)
+            return
+        # profile_args = parse_ini_file(self._args.profile_name, self._args.config, self._args.verbose)
         old_args_dict = self._args.__dict__.copy()
         self._args = parse_args(profile_args, old_args_dict)
+        self.marshal()
 
 
 def plugin_main(argv, target_factory):
@@ -361,6 +379,7 @@ def plugin_main(argv, target_factory):
 
     simnet = SimNetPlugin(args, target_factory)
     if 'profile_name' in args:
-        simnet.load_profile(args.profile_name, args.config)
+        simnet.load_profile()
+        return
 
     simnet.marshal()

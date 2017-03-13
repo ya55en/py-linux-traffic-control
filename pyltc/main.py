@@ -37,4 +37,6 @@ def pyltc_entry_point(argv=None, target_factory=None):
 
 
 if __name__ == '__main__':
+    # for local testing and experimenting
+    # pyltc_entry_point(['profile', '4g', '-c', '../test.profile', '-s'])
     pyltc_entry_point(['simnet', '-c', '--interface', 'lo', '-v', '--upload'])
