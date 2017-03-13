@@ -169,11 +169,12 @@ class TestTcCommandTarget(unittest.TestCase):
         target.add_class('htb', rootqd, rate='512kbit', ceil='512kbit')
         target.marshal()
         calls = [
-            mock.call('tc qdisc del dev foo12 root', ignore_errors=True, verbose=False),
+            mock.call('tc qdisc del dev foo12 root', ignore_errors=True, sudo=True, verbose=False),
             mock.call().execute(),
-            mock.call('tc qdisc add dev foo12 root handle 1:0 htb', ignore_errors=False, verbose=False),
+            mock.call('tc qdisc add dev foo12 root handle 1:0 htb', ignore_errors=False, sudo=True, verbose=False),
             mock.call().execute(),
-            mock.call('tc class add dev foo12 parent 1:0 classid 1:1 htb ceil 512kbit rate 512kbit', ignore_errors=False, verbose=False),
+            mock.call('tc class add dev foo12 parent 1:0 classid 1:1 htb ceil 512kbit rate 512kbit',
+                      ignore_errors=False, sudo=True, verbose=False),
             mock.call().execute(),
         ]
         fake_command_line.assert_has_calls(calls)
