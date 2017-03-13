@@ -2,6 +2,13 @@
 py-linux-traffic-control changes
 =================================
 
+v. 0.4.7 (2017-03-13)
+--------------------------
+- Improved ``sudo`` support;
+- Couple of bugs discovered and fixed;
+- Documentation and examples improvements.
+
+
 v. 0.4.6 (2017-02-07)
 --------------------------
 - Added support for lport/rport port type;

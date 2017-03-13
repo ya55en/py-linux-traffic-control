@@ -134,8 +134,8 @@ class TestTcFileTarget(unittest.TestCase):
         target = TcFileTarget(NetDevice('bar44'), DIR_EGRESS)
         target.set_root_qdisc('htb', default=144)
         target.marshal()
-        fake_print.assert_not_called
-        fake_open.assert_not_called
+        fake_print.assert_not_called()
+        fake_open.assert_not_called()
 
     @mock.patch('pyltc.core.target.open')
     @mock.patch('pyltc.core.target.print')
