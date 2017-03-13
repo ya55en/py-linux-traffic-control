@@ -238,6 +238,12 @@ class SimpleNamespace(object):
         return "<SimpleNamespace({!r}) at 0x{:016x}>".format(self.__dict__, id(self))
 
 
+class UndefType(object):
+    pass
+
+Undef = UndefType()
+
+
 class SimNetPlugin(object):
 
     def __init__(self, args=None, target_factory=None):
@@ -262,7 +268,7 @@ class SimNetPlugin(object):
         else:
             self._args = args
 
-    def configure(self, clear='<undef>', verbose='<undef>', interface='<undef>', ifbdevice='<undef>'):
+    def configure(self, clear=Undef, verbose=Undef, interface=Undef, ifbdevice=Undef):
         """Configures the general options given as named arguments.
 
         :param clear: bool - whether to generate a clearing command at the command sequence start
@@ -270,10 +276,10 @@ class SimNetPlugin(object):
         :param interface: string - the network device name
         :param ifbdevice: string - the ifb network device name, if any
         """
-        self._args.clear = clear if clear != '<undef>' else self._args.clear
-        self._args.verbose = verbose if verbose != '<undef>' else self._args.verbose
-        self._args.interface = interface if interface != '<undef>' else self._args.interface
-        self._args.ifbdevice = ifbdevice if ifbdevice != '<undef>' else self._args.ifbdevice
+        self._args.clear = clear if clear is not Undef else self._args.clear
+        self._args.verbose = verbose if verbose is not Undef else self._args.verbose
+        self._args.interface = interface if interface is not Undef else self._args.interface
+        self._args.ifbdevice = ifbdevice if ifbdevice is not Undef else self._args.ifbdevice
 
     def setup(self, upload=None, download=None, protocol=None, porttype=None, range=None,
               rate=None, jitter=None):
