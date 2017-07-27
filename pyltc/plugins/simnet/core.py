@@ -9,15 +9,11 @@ TODO: introduce plugin functionality and convert this to be the first plugin ;)
 
 """
 
-import os
-import sys
-import argparse
-
-from pyltc.conf import CONFIG_PATHS, __build__, __version__
 from parser import ParserError
-from pyltc.util.confparser import ConfigParser
+
 from pyltc.core.netdevice import DeviceManager, NetDevice
 from pyltc.plugins.simnet.util import BranchParser
+from pyltc.core.plug import PyltcPlugin
 
 #: netem (the qdisc that simulates special network conditions) works for a
 # default of 1000 packets. This was a source of problems and the workaround
@@ -25,126 +21,6 @@ from pyltc.plugins.simnet.util import BranchParser
 # Beware that if you keep that filter on for too long, this limit may
 # be reached.
 NETEM_LIMIT = 1000000000
-
-
-class IllegalArguments(Exception):
-    """Represents an error in command line or profile setup."""
-
-
-def determine_ini_conf_file():
-    """Looks for (in preconfigured locations) and returns a profile config file
-       if one is found or None if none has been found."""
-    for path in CONFIG_PATHS:
-        if os.path.exists(path):
-            return os.path.abspath(path)
-    return None  # explicitly
-
-
-def parse_ini_file(profile, conf_file, verbose):
-    """Parses given input file and returns a list of command line arguments
-       equivalent to the settings of that profile."""
-    if not conf_file:
-        conf_file = determine_ini_conf_file()
-    if not conf_file:  # FIXME: revisit this; raising an exception seems better
-        return ['no_conf_file']
-    if verbose:
-        print('Using config file {!r}'.format(conf_file))
-
-    conf_parser = ConfigParser(conf_file)
-    conf_parser.parse()
-    try:
-        new_args = conf_parser.section(profile)
-    except KeyError:  # FIXME: revisit this; raising an exception seems better
-        return ['no_such_profile', '{!r}'.format(profile)]
-
-    new_args.insert(0, 'simnet')
-    if verbose:
-        print("Profile args:", new_args)
-    return new_args
-
-
-def handle_version_arg(argv):
-    """Handles the '--version' command line argument."""
-
-    def compose_version():
-        name = sys.argv[0].split(os.sep)[-1]  # TODO: make this a constant
-        version_str = ".".join(map(str, __version__))
-        return "{} verison {} (build {})".format(name, version_str, __build__)
-
-    if '-V' in argv or '--version' in argv:
-        print(compose_version())
-        sys.exit(0)
-
-
-def parse_args(argv, old_args_dict=None):
-    """Parses given list of command line arguments using `argparse.ArgumentParser`
-       and returns the parsed namespace."""
-    # old_args_dict not None when we are called with profile; then it contains original profile args.
-    old_args_dict = old_args_dict if old_args_dict else dict()
-    parser = argparse.ArgumentParser(epilog="Use '%(prog)s sub-command -h/--help' to see the specific options.")
-    if not argv:
-        parser.error('Insufficient arguments. Try -h/--help.')
-    if 'no_conf_file' in argv:
-        parser.error('Cannot find configuration file - looked up in {}.'.format(CONFIG_PATHS))
-    if 'no_such_profile' in argv:
-        parser.error('Config profile NOT found: {}'.format(argv[1]))
-    parser.add_argument("-V", "--version", action='store_true', help="show program version and exit")
-
-    subparsers = parser.add_subparsers(dest="subparser")
-    parser_profile = subparsers.add_parser("profile", help="profile to be used")
-    parser_profile.add_argument("profile_name", help="profile name from the config file")
-    parser_profile.add_argument("-v", "--verbose", action='store_true', required=False, default=False,
-                                help="more verbose output (default: %(default)s)")
-    parser_profile.add_argument("-c", "--config", required=False, default=None,
-                                help="configuration file to read from."
-                                     " If not specified, default paths will be tried before giving up"
-                                     " (see module's CONFIG_PATHS).")
-
-    parser_cmd = subparsers.add_parser('simnet', help="traffic control setup to be applied")
-    parser_cmd.add_argument("-v", "--verbose", action='store_true', required=False, default=False,
-                            help="more verbose output (default: %(default)s)")
-    parser_cmd.add_argument("-i", "--interface", required=False, default='lo',
-                            help="the network device name (default: %(default)s)")
-    parser_cmd.add_argument("-c", "--clear", action='store_true', required=False, default=False,
-                            help="issue a chain clearing clause before the actual recipe (default: %(default)s)")
-    parser_cmd.add_argument("-b", "--ifbdevice", nargs='?', const='ifb', default=None,
-                            help="for download (ingress) control, specifies which ifb device to use."
-                                 " If not present, a new device will be set up and used. (default: %(default)s)")
-    parser_cmd.add_argument("-u", "--upload", default=None, nargs='*', type=str,
-                            metavar='PROTOCOL:PORTTYPE:RANGE:RATE:JITTER',
-                            help="define discipline classes for upload (egress) port range. Example:"
-                                 " tcp:dport:16000-24000:512kbit:5%%. PROTOCOL, PORTTYPE and RANGE are required."
-                                 " RATE and/or JITTER must be present. PROTOCOL is one of 'tcp', 'udp'."
-                                 " PORTTYPE is one of 'sport', 'dport', 'lport', 'rport'."
-                                 " RANGE is a dash-delimited range of ports MINPORT-MAXPORT (inclusive),"
-                                 " a single port or the keyword 'all'.")
-    parser_cmd.add_argument("-d", "--download", default=None, nargs='*', type=str,
-                            metavar='PROTOCOL:PORTTYPE:RANGE:RATE:JITTER',
-                            help="define discipline class(es) for download (ingress) port range(s). Example:"
-                                 " tcp:dport:16000-24000:512kbit:5%%. PROTOCOL, PORTTYPE and RANGE are required."
-                                 " PORTTYPE is one of 'sport', 'dport', 'lport', 'rport'."
-                                 " RANGE is a dash-delimited range of ports MINPORT-MAXPORT (inclusive),"
-                                 " a single port or the keyword 'all'.")
-
-    args = parser.parse_args(argv)
-    args.verbose = args.verbose or old_args_dict.get('verbose', False)
-
-    if not args.subparser:
-        parser.error('No action requested.')
-
-    if args.subparser == 'simnet':
-
-        if args.clear and args.upload is None and args.download is None:
-            args.upload = []
-            args.download = []
-
-        if not (args.upload or args.download or args.clear):
-            parser.error('no action requested: add at least one of --upload, --download, --clear.')
-
-        if not DeviceManager.device_exists(args.interface):
-            raise ParserError("device NOT found: {!s}".format(args.interface))
-
-    return args
 
 
 def build_basics(target, tcp_all_rate, udp_all_rate):
@@ -243,7 +119,61 @@ class UndefType(object):
 Undef = UndefType()
 
 
-class SimNetPlugin(object):
+class SimNetPlugin(PyltcPlugin):
+
+    __plugin_name__ = 'simnet'
+
+    @classmethod
+    def add_subparser(cls, subparsers):
+        subparser = subparsers.add_parser(cls.__plugin_name__,
+                                           help="network simulation (simnet) traffic control setup")
+
+        subparser.add_argument('-v', '--verbose', action='store_true', required=False, default=False,
+                               help="more verbose output (default: %(default)s)")
+
+        subparser.add_argument('-i', '--interface', required=False, default='lo',
+                               help="the network device name (default: %(default)s)")
+
+        subparser.add_argument('-c', '--clear', action='store_true', required=False, default=False,
+                               help="issue a chain clearing clause before the actual recipe (default: %(default)s)")
+
+        subparser.add_argument('-b', '--ifbdevice', nargs='?', const='ifb', default=None,
+                               help="for download (ingress) control, specifies which ifb device to use."
+                                     " If not present, a new device will be set up and used. (default: %(default)s)")
+
+        subparser.add_argument('-u', '--upload', default=None, nargs='*', type=str,
+                               metavar='PROTOCOL:PORTTYPE:RANGE:RATE:JITTER',
+                               help="define discipline classes for upload (egress) port range. Example:"
+                                    " tcp:dport:16000-24000:512kbit:5%%. PROTOCOL, PORTTYPE and RANGE are required."
+                                    " RATE and/or JITTER must be present. PROTOCOL is one of 'tcp', 'udp'."
+                                    " PORTTYPE is one of 'sport', 'dport', 'lport', 'rport'."
+                                    " RANGE is a dash-delimited range of ports MINPORT-MAXPORT (inclusive),"
+                                    " a single port or the keyword 'all'.")
+
+        subparser.add_argument('-d', '--download', default=None, nargs='*', type=str,
+                               metavar='PROTOCOL:PORTTYPE:RANGE:RATE:JITTER',
+                               help="define discipline class(es) for download (ingress) port range(s). Example:"
+                                    " tcp:dport:16000-24000:512kbit:5%%. PROTOCOL, PORTTYPE and RANGE are required"
+                                    " and have the same values as for '--upload' above.")
+
+        # @classmethod
+        # def get_meta(cls):
+        #     meta = {
+        #         'help_description': "network simulation (simnet) traffic control setup",
+        #     }
+        #     return meta
+
+    @classmethod
+    def post_parse_process(cls, args):
+        if not (args.upload or args.download or args.clear):
+            raise ParserError("no action requested: add at least one of --upload, --download, --clear.")
+
+        if not DeviceManager.device_exists(args.interface):
+            raise ParserError("device NOT found: {!s}".format(args.interface))
+
+        if args.clear and args.upload is None and args.download is None:
+            args.upload = list()
+            args.download = list()
 
     def __init__(self, args=None, target_factory=None):
         """Initializer.
@@ -251,8 +181,7 @@ class SimNetPlugin(object):
         :param target_factory: callable returning ITarget - the target factory
                to create the target chanin builders with
         """
-        self._target_factory = target_factory
-
+        super().__init__(args=args, target_factory=target_factory)
         if args is None:
             self._args = SimpleNamespace()
 
@@ -261,11 +190,8 @@ class SimNetPlugin(object):
             self._args.upload = list()
             self._args.download = list()
 
-            #: intrenal helper flag which indicates input that requres clearing the chain(s) but no qdisc setup
+            #: intrenal helper flag which indicates input that requires clearing the chain(s) but no qdisc setup
             self._args.clearonly_mode = False
-
-        else:
-            self._args = args
 
     def configure(self, clear=Undef, verbose=Undef, interface=Undef, ifbdevice=Undef):
         """Configures the general options given as named arguments.
@@ -315,12 +241,15 @@ class SimNetPlugin(object):
 
         if (self._args.download is not None) and (not self._args.ifbdevice):
             self._args.ifbdevice = 'ifb'
+
         ifbdev = NetDevice.get_device(self._args.ifbdevice, self._target_factory)
         ifbdev.up()
 
         if self._args.upload is not None:
+
             if self._args.clear:
                 iface.egress.clear()
+
             if self._args.upload:  # not self._args.clearonly_mode:
                 tcp_all_rate, udp_all_rate = determine_all_rates(self._args.upload, self._args.download)
                 tcp_hook, udp_hook = build_basics(iface.egress, tcp_all_rate, udp_all_rate)
@@ -330,9 +259,11 @@ class SimNetPlugin(object):
             iface.egress.marshal()
 
         if self._args.download is not None:
+
             if self._args.clear:
                 iface.ingress.clear()
                 ifbdev.egress.clear()
+
             if self._args.download: # not self._args.clearonly_mode:
                 iface.ingress.set_redirect(iface, ifbdev)
                 tcp_all_rate, udp_all_rate = determine_all_rates(self._args.upload, self._args.download)
@@ -343,23 +274,3 @@ class SimNetPlugin(object):
             iface.ingress.marshal()
             ifbdev.egress.configure(verbose=self._args.verbose)
             ifbdev.egress.marshal()
-
-    def load_profile(self, profile_name, config_file=None):
-        profile_args = parse_ini_file(profile_name, config_file, self._args.verbose)
-        old_args_dict = self._args.__dict__.copy()
-        self._args = parse_args(profile_args, old_args_dict)
-
-
-def plugin_main(argv, target_factory):
-    if not argv:
-        argv = sys.argv[1:]
-    handle_version_arg(argv)
-    args = parse_args(argv)
-    if args.verbose:
-        print("Args:", str(args).lstrip("Namespace"))
-
-    simnet = SimNetPlugin(args, target_factory)
-    if 'profile_name' in args:
-        simnet.load_profile(args.profile_name, args.config)
-
-    simnet.marshal()

@@ -2,8 +2,8 @@
 Base test classes for PyLTC integration testing.
 
 """
-from pyltc.plugins.simnet import parse_args
-from pyltc.core.target import TcTarget, TcCommandTarget, TcFileTarget
+from pyltc.core.plug import parse_args
+from pyltc.core.target import TcTarget, TcCommandTarget
 from pyltc.main import pyltc_entry_point
 from tests.util.iperf_proc import TCPNetPerfTest, UDPNetPerfTest
 from pyltc.plugins.simnet.util import BranchParser

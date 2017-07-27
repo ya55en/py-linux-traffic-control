@@ -30,7 +30,7 @@ A sample configuration file::
 
 
 class IllegalState(Exception):
-    """Rased when a call to a method is done but the object is not
+    """Raised when a call to a method is done but the object is not
        in the proper state for that call to be allowed."""
 
 # class MisconfigurationError(Exception):
@@ -62,7 +62,7 @@ class ConfigParser(object):
             return open(self._filename)
         if self._stream:
             return self._stream
-        raise IllegalState("Provide filename or stream")
+        raise IllegalState("Provide filename or stream")  # FIXME: raise UNREACHABLE here?
 
     def _strip_comments(self):
 
@@ -123,4 +123,3 @@ class ConfigParser(object):
         if not self._sections:
             raise IllegalState("Call parse() first")
         return self._sections[name]
-

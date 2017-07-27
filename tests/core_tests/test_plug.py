@@ -5,14 +5,14 @@ Unit tests for the plug module.
 
 import unittest
 
-from pyltc.core.plug import PluginMount
+from pyltc.core.plug import PluginMountMeta
 
 
-class FakePluginBaseclassOne(metaclass=PluginMount):
+class FakePluginBaseclassOne(metaclass=PluginMountMeta):
     __plugin_name__ = None
 
 
-class FakePluginBaseclassTwo(metaclass=PluginMount):
+class FakePluginBaseclassTwo(metaclass=PluginMountMeta):
     __plugin_name__ = None
 
 

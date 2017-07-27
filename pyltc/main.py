@@ -1,6 +1,8 @@
 """
 The PyLTC main module.
 
+FIXME: Fix the documentation to reflect the latest plugin impl status:
+
 This module will in the future take care of:
 
  (a) calling the parseargs stuff to make sure all common arguments
@@ -10,14 +12,51 @@ This module will in the future take care of:
      and pass the settings to its entry point.
 
 Currently we do not support plugins yet, so only (a) is done,
-and for (b), the currently built-in thehunmonkgroup module is used.
+and for (b), the currently built-in ``simnet`` module is used.
 
 """
+import os
 import sys
-
-from pyltc.core.facade import TrafficControl
-from pyltc.plugins import simnet
+import argparse
 from parser import ParserError
+
+from pyltc.conf import CONFIG_PATHS, __version__, __build__
+from pyltc.core.plug import PyltcPlugin, parse_args
+from pyltc.util.confparser import ConfigParser
+from pyltc.core.facade import TrafficControl
+
+
+def handle_version_arg(argv):
+    """Handles the '--version' command line argument."""
+
+    def compose_version():
+        name = sys.argv[0].split(os.sep)[-1]  # TODO: make this a constant
+        version_str = ".".join(map(str, __version__))
+        return "{} verison {} (build {})".format(name, version_str, __build__)
+
+    if '-V' in argv or '--version' in argv:
+        print(compose_version())
+        sys.exit(0)
+
+
+def plugin_main(argv, target_factory):
+    if not argv:
+        argv = sys.argv[1:]
+    handle_version_arg(argv)
+    args = parse_args(argv)
+    if args.verbose:
+        print("Args:", str(args).lstrip('Namespace'))
+
+    PluginClass = PyltcPlugin.plugins_map.get(args.subparser)
+    if not PluginClass:
+        raise ParserError("cannot find plugin {!r}".format(args.subparser))
+
+    plugin = PluginClass(args, target_factory)
+    # FIXME: remove
+    # if 'profile_name' in args:
+    #     plugin.load_profile(args.profile_name, args.config)
+
+    plugin.marshal()
 
 
 def pyltc_entry_point(argv=None, target_factory=None):
@@ -30,7 +69,7 @@ def pyltc_entry_point(argv=None, target_factory=None):
     """
     TrafficControl.init()
     try:
-        simnet.plugin_main(argv, target_factory)
+        plugin_main(argv, target_factory)
     except ParserError as err:
         print("ltc.py: error:", err, file=sys.stderr)
         return 2
