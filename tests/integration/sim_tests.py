@@ -2,7 +2,7 @@
 Simulation tests for pyltc.
 We generate tc commands without executing them, which allows for quick regression testing.
 
-TODO: A larger test suite is comming soon, and it will be machine generated.
+TODO: A larger test suite is coming soon, and it will be machine generated.
 
 """
 

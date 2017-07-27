@@ -9,7 +9,7 @@ There are to target chains for each interface: "egress" (or "root") for outgoing
 chain for incoming traffic.
 
 This module provides exclusively tc-oriented targets, if which the default one is ``TcCommandTarget``
-whos ``marshal()`` will attempt to actually execute the accumulated setups as ``tc`` commands and
+who's ``marshal()`` will attempt to actually execute the accumulated setups as ``tc`` commands and
 thus actually configure the kernel with that setup.
 
 The other implementations here may print the setup to a file or stdout and are useful for testing purposes.

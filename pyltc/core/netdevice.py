@@ -1,5 +1,5 @@
 """
-Network device management classes.
+PyLTC network device management classes.
 
 """
 import os

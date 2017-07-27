@@ -1,7 +1,7 @@
 """
 Core classes for the py-linux-traffic-control library.
 
-The Linux Traffic Control Structure (LTCS) consists of qudiscs, classes
+The Linux Traffic Control Structure (LTCS) consists of qdiscs, classes
 and filters, as recognized by the tc utility [1].
 
 The core module defines objects for each of these hierarchy elements that helps

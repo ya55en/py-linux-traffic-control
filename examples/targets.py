@@ -1,10 +1,10 @@
 """
-Examples for creating a custom target builders.
+Examples for creating a custom target builder.
 
-Our custom ``BufferTcTarget`` will be suited to serve as a mock target
-during test and example executions. It can be configured with a callback
-and on ``marshal()`` that callback is invoked with a single argument
-a copy of the list with all tc commands accumulated.
+Our custom ``BufferTcTarget`` is suited to serve as a mock target during
+test and example executions. It can be configured with a callback and on
+``marshal()`` that callback is invoked with a single argument a copy of
+the list with all tc commands accumulated.
 
 """
 from pyltc.core import DIR_EGRESS

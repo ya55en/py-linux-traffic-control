@@ -1,5 +1,5 @@
 """
-Unit tests for the pyltc.core.netdevice module.
+Unit tests for the ``pyltc.core.netdevice`` module.
 
 """
 import unittest

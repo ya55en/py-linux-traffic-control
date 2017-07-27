@@ -21,8 +21,8 @@ from pyltc.plugins.simnet.util import BranchParser
 
 #: netem (the qdisc that simulates special network conditions) works for a
 # default of 1000 packets. This was a source of problems and the workaround
-# that I came up with currently is to set it to a very large  number.
-#: Chad: Beware that if you keep that filter on for too long, this limit may
+# that I came up with currently is to set it to a very large number.
+# Beware that if you keep that filter on for too long, this limit may
 # be reached.
 NETEM_LIMIT = 1000000000
 

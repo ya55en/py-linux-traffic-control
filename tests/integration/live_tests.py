@@ -1,8 +1,8 @@
 """
 Live tests for pyltc.
 
-We execute actual tc commands and then launch iperf server and client
-and measure the badwith.
+We execute actual tc commands and then launch ``iperf`` server and client
+and measure the bandwidth.
 
 """
 import unittest

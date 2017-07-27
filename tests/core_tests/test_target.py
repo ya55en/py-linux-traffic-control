@@ -14,7 +14,7 @@ from pyltc.core.target import TcTarget, TcFileTarget, TcCommandTarget
 
 
 class DummyTcTarget(TcTarget):
-    """Dummy traget that does nothing on ``marshal()``."""
+    """Dummy target that does nothing on ``marshal()``."""
     def marshal(self):
         pass
 
