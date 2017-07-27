@@ -26,10 +26,13 @@ class BranchParser(object):
         match = regex.match(branch_str)
         if not match:
             raise ParsingError("Invalid upload/download argument: {!r}".format(branch_str))
+
         if not match.group(2) and match.group(3) != 'all':
             raise ParsingError("Port type not found in {!r} (may be omitted only if range is 'all')".format(branch_str))
+
         if not (match.group(4) or match.group(5)):
             raise ParsingError('Either RATE, JITTER or both must be present in {!r}'.format(branch_str))
+
         self._branch = dict()
         self._branch['protocol'] = match.group(1)
         orig_porttype = match.group(2).lstrip(':') if match.group(2) else match.group(2)

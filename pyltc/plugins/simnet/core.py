@@ -15,10 +15,9 @@ import argparse
 
 from pyltc.conf import CONFIG_PATHS, __build__, __version__
 from parser import ParserError
-from pyltc.util.cmdline import CommandLine
 from pyltc.util.confparser import ConfigParser
-from pyltc.core.netdevice import DeviceManager, NetDevice, NetDeviceNotFound
-from pyltc.plugins.simnet_util import BranchParser
+from pyltc.core.netdevice import DeviceManager, NetDevice
+from pyltc.plugins.simnet.util import BranchParser
 
 #: netem (the qdisc that simulates special network conditions) works for a
 # default of 1000 packets. This was a source of problems and the workaround
