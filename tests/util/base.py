@@ -6,7 +6,7 @@ from pyltc.plugins.simnet import parse_args
 from pyltc.core.target import TcTarget, TcCommandTarget, TcFileTarget
 from pyltc.main import pyltc_entry_point
 from tests.util.iperf_proc import TCPNetPerfTest, UDPNetPerfTest
-from pyltc.plugins.simnet_util import BranchParser
+from pyltc.plugins.simnet.util import BranchParser
 
 
 class TcTestTarget(TcTarget):

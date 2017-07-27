@@ -5,7 +5,7 @@ Unit tests for the pytc helper stuff.
 import unittest
 from configparser import ParsingError
 
-from pyltc.plugins.simnet_util import BranchParser
+from pyltc.plugins.simnet.util import BranchParser
 
 
 class TestBranchParser(unittest.TestCase):

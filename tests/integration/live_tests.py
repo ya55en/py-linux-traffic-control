@@ -18,7 +18,7 @@ if not REPO_ROOT in sys.path:
 
 from pyltc.core import DIR_EGRESS
 from pyltc.main import pyltc_entry_point
-from pyltc.plugins.simnet_util import BranchParser
+from pyltc.plugins.simnet.util import BranchParser
 from pyltc.util.rates import convert2bps
 from pyltc.util.counter import Counter
 from tests.util.base import LtcLiveTargetRun
