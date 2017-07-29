@@ -1,11 +1,8 @@
 """
-Chad Phillips' (thehunmonkgroup) network simulation plugin.
+Chad Phillips' (thehunmonkgroup @ github) network simulation plugin.
 
-Note that this NOT yet converted to an actual plugin but rather imported
-as a Python module currently.
-
-TODO: introduce plugin functionality and convert this to be the first plugin ;)
-      (This has been partially done with introducing the ``SimNetPlugin`` class.)
+``simnet`` allows for simulating network conditions related to bandwidth
+limitations as well as packet loss.
 
 """
 
@@ -14,12 +11,12 @@ from parser import ParserError
 from pyltc.core.netdevice import DeviceManager, NetDevice
 from pyltc.plugins.simnet.util import BranchParser
 from pyltc.core.plug import PyltcPlugin
+from pyltc.util.misc import SimpleNamespace, Undef
 
 #: netem (the qdisc that simulates special network conditions) works for a
-# default of 1000 packets. This was a source of problems and the workaround
-# that I came up with currently is to set it to a very large number.
-# Beware that if you keep that filter on for too long, this limit may
-# be reached.
+#: default of 1000 packets. This was a source of problems and the workaround
+#: currently is to set it to a very large number. Beware that if you keep
+#: that filter on for too long, this limit may be reached.
 NETEM_LIMIT = 1000000000
 
 
@@ -72,10 +69,11 @@ def build_tree(target, tcphook, udphook, args_list, upload=None, download=None):
         else:
             raise RuntimeError('UNREACHABLE')
 
-        # class(htb) - shaping
+        # traffic shaping via class htb
         rate = branch['rate'] if branch['rate'] else '15gbit'  # TODO: move this to a constant
         htb_class = target.add_class('htb', hook, rate=rate)
-        # filter(basic) - port
+
+        # basic filter for port range
         if '-' not in branch['range']:
             build_single_port_filter(target, hook, htb_class, branch['range'], branch['porttype'])
         else:
@@ -83,7 +81,8 @@ def build_tree(target, tcphook, udphook, args_list, upload=None, download=None):
             cond_port_range = '"cmp(u16 at {} layer transport gt {}) and cmp(u16 at {} layer transport lt {})"' \
                 .format(offset, start - 1, offset, end + 1)
             basic_filter = target.add_filter('basic', hook, cond=cond_port_range, flownode=htb_class)
-        # qdisc(netem) - loss
+
+        # loss simulation via netem qdisc
         if branch['loss']:
             netem_qdisc = target.add_qdisc('netem', parent=htb_class, loss=branch['loss'], limit=NETEM_LIMIT)
 
@@ -106,17 +105,6 @@ def determine_all_rates(upload, download):
                     raise ParserError("More than one 'all' range detected for the same protocol (udp).")
                 udp_all_rate = parsed['rate']
     return tcp_all_rate, udp_all_rate
-
-
-class SimpleNamespace(object):
-    def __repr__(self):
-        return "<SimpleNamespace({!r}) at 0x{:016x}>".format(self.__dict__, id(self))
-
-
-class UndefType(object):
-    pass
-
-Undef = UndefType()
 
 
 class SimNetPlugin(PyltcPlugin):
@@ -190,7 +178,7 @@ class SimNetPlugin(PyltcPlugin):
             self._args.upload = list()
             self._args.download = list()
 
-            #: intrenal helper flag which indicates input that requires clearing the chain(s) but no qdisc setup
+            #: internal helper flag which indicates input that requires clearing the chain(s) but no qdisc setup
             self._args.clearonly_mode = False
 
     def configure(self, clear=Undef, verbose=Undef, interface=Undef, ifbdevice=Undef):
