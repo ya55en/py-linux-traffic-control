@@ -17,13 +17,11 @@ and for (b), the currently built-in ``simnet`` module is used.
 """
 import os
 import sys
-import argparse
-from parser import ParserError
 
-from pyltc.conf import CONFIG_PATHS, __version__, __build__
-from pyltc.core.plug import PyltcPlugin, parse_args
-from pyltc.util.confparser import ConfigParser
+from pyltc.conf import __version__, __build__
+from pyltc.util.argsparse import parse_args, ArgParseError
 from pyltc.core.facade import TrafficControl
+from pyltc.core.plug import PyltcPlugin
 
 
 def handle_version_arg(argv):
@@ -39,7 +37,7 @@ def handle_version_arg(argv):
         sys.exit(0)
 
 
-def plugin_main(argv, target_factory):
+def _main(argv, target_factory):
     if not argv:
         argv = sys.argv[1:]
     handle_version_arg(argv)
@@ -48,14 +46,9 @@ def plugin_main(argv, target_factory):
         print("Args:", str(args).lstrip('Namespace'))
 
     PluginClass = PyltcPlugin.plugins_map.get(args.subparser)
-    if not PluginClass:
-        raise ParserError("cannot find plugin {!r}".format(args.subparser))
+    assert PluginClass, "cannot find plugin {!r}".format(args.subparser)
 
     plugin = PluginClass(args, target_factory)
-    # FIXME: remove
-    # if 'profile_name' in args:
-    #     plugin.load_profile(args.profile_name, args.config)
-
     plugin.marshal()
 
 
@@ -68,9 +61,11 @@ def pyltc_entry_point(argv=None, target_factory=None):
     :return: None
     """
     TrafficControl.init()
+
     try:
-        plugin_main(argv, target_factory)
-    except ParserError as err:
+        _main(argv, target_factory)
+
+    except ArgParseError as err:
         print("ltc.py: error:", err, file=sys.stderr)
         return 2
 

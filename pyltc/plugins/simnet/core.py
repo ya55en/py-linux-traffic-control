@@ -2,16 +2,17 @@
 Chad Phillips' (thehunmonkgroup @ github) network simulation plugin.
 
 ``simnet`` allows for simulating network conditions related to bandwidth
-limitations as well as packet loss.
+limitations (done via htb-based traffic shapping) as well as packet loss
+(achieved using the netem qdisc loss simulation).
 
 """
 
-from parser import ParserError
-
 from pyltc.core.netdevice import DeviceManager, NetDevice
+from pyltc.util.misc import SimpleNamespace, Undef
+from pyltc.util.argsparse import ArgParseError
 from pyltc.plugins.simnet.util import BranchParser
 from pyltc.core.plug import PyltcPlugin
-from pyltc.util.misc import SimpleNamespace, Undef
+
 
 #: netem (the qdisc that simulates special network conditions) works for a
 #: default of 1000 packets. This was a source of problems and the workaround
@@ -98,11 +99,12 @@ def determine_all_rates(upload, download):
             parsed = BranchParser(group, dontcare=True).as_dict()  # in this case we don't care for direction
             if parsed['range'] == 'all' and parsed['protocol'] == 'tcp':
                 if tcp_all_rate:
-                    raise ParserError("More than one 'all' range detected for the same protocol (tcp).")
+                    raise ArgParseError("More than one 'all' range detected for the same protocol (tcp).")
                 tcp_all_rate = parsed['rate']
+
             elif parsed['range'] == 'all' and parsed['protocol'] == 'udp':
                 if udp_all_rate:
-                    raise ParserError("More than one 'all' range detected for the same protocol (udp).")
+                    raise ArgParseError("More than one 'all' range detected for the same protocol (udp).")
                 udp_all_rate = parsed['rate']
     return tcp_all_rate, udp_all_rate
 
@@ -114,7 +116,7 @@ class SimNetPlugin(PyltcPlugin):
     @classmethod
     def add_subparser(cls, subparsers):
         subparser = subparsers.add_parser(cls.__plugin_name__,
-                                           help="network simulation (simnet) traffic control setup")
+                                          help="network simulation (simnet) traffic control setup")
 
         subparser.add_argument('-v', '--verbose', action='store_true', required=False, default=False,
                                help="more verbose output (default: %(default)s)")
@@ -154,10 +156,10 @@ class SimNetPlugin(PyltcPlugin):
     @classmethod
     def post_parse_process(cls, args):
         if not (args.upload or args.download or args.clear):
-            raise ParserError("no action requested: add at least one of --upload, --download, --clear.")
+            raise ArgParseError("no action requested: add at least one of --upload, --download, --clear.")
 
         if not DeviceManager.device_exists(args.interface):
-            raise ParserError("device NOT found: {!s}".format(args.interface))
+            raise ArgParseError("device NOT found: {!s}".format(args.interface))
 
         if args.clear and args.upload is None and args.download is None:
             args.upload = list()

@@ -1,5 +1,6 @@
 """
+simnet plugin initialization.
 
 """
 
-from .core import SimNetPlugin # , plugin_main, parse_args
+from .core import SimNetPlugin
