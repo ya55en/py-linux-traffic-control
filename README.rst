@@ -5,12 +5,12 @@ PyLTC
 
 Python-based Linux Traffic Control setup utility.
 
+**WARNING -- Legacy/unsupported branch:** This branch is not officially
+supported.
 
 
 Installation
 -------------
-
-!OBSOLETE! Installing using pip is underway but not yet in place. Your patience appreciated ;)
 
 Check out this repository on your linux machine where you want to do traffic
 control.
